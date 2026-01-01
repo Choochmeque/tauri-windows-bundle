@@ -1,0 +1,55 @@
+# .github/workflows/publish.yml
+name: Publish
+
+on:
+  push:
+    tags:
+      - "v*.*.*"         # e.g. v1.2.3
+  workflow_dispatch:      # allow manual runs
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish to npm (pnpm)
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # pnpm
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      # Node + registry auth
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+          cache: "pnpm"
+
+      - name: Update npm
+        run: npm install -g npm@latest
+
+      # Install dependencies
+      - run: pnpm install
+
+      # Ensure the tag matches package.json version
+      - name: Verify version matches tag
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          test "$PKG_VERSION" = "$TAG_VERSION" || (echo "Tag $TAG_VERSION != package.json $PKG_VERSION" && exit 1)
+
+      # Publish
+      - name: pnpm publish
+        run: |
+          # If you want supply-chain provenance (npm >=9.5, Node >=20)
+          npm config set provenance true
+          # Public package:
+          pnpm publish --access public --no-git-checks

@@ -1,0 +1,59 @@
+{
+  "name": "@choochmeque/tauri-windows-bundle",
+  "version": "0.1.0",
+  "description": "MSIX packaging tool for Tauri apps - Windows Store ready bundles",
+  "type": "module",
+  "bin": {
+    "tauri-windows-bundle": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "rollup -c",
+    "prepublishOnly": "pnpm build",
+    "pretest": "pnpm build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "format": "prettier --write \"./**/*.{cjs,mjs,js,jsx,mts,ts,tsx,html,css,json}\"",
+    "format:check": "prettier --check \"./**/*.{cjs,mjs,js,jsx,mts,ts,tsx,html,css,json}\""
+  },
+  "keywords": [
+    "tauri",
+    "windows",
+    "msix",
+    "msixbundle",
+    "packaging",
+    "windows-store"
+  ],
+  "author": "Choochmeque",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Choochmeque/tauri-windows-bundle.git"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "dependencies": {
+    "commander": "^12.0.0",
+    "glob": "^10.3.10"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@rollup/plugin-node-resolve": "^16.0.0",
+    "@rollup/plugin-typescript": "^12.0.0",
+    "@types/node": "^25.0.3",
+    "@vitest/coverage-v8": "^2.0.0",
+    "eslint": "^9.0.0",
+    "typescript-eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "rollup": "^4.0.0",
+    "tslib": "^2.6.0",
+    "typescript": "^5.3.3",
+    "vitest": "^2.0.0"
+  },
+  "packageManager": "pnpm@10.16.0+sha512.8066e7b034217b700a9a4dbb3a005061d641ba130a89915213a10b3ca4919c19c037bec8066afdc559b89635fdb806b16ea673f2468fbb28aabfa13c53e3f769"
+}
