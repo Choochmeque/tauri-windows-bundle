@@ -10,7 +10,7 @@ describe('generateManifest', () => {
     identifier: 'com.example.testapp',
     publisher: 'CN=TestCompany',
     publisherDisplayName: 'Test Company',
-    capabilities: ['internetClient'],
+    capabilities: { general: ['internetClient'] },
   };
 
   it('replaces all template variables', () => {
@@ -35,12 +35,22 @@ describe('generateManifest', () => {
   it('includes capabilities', () => {
     const config: MergedConfig = {
       ...mockConfig,
-      capabilities: ['internetClient', 'webcam'],
+      capabilities: {
+        general: ['internetClient'],
+        device: ['webcam'],
+        restricted: ['broadFileSystemAccess'],
+      },
     };
     const manifest = generateManifest(config, 'x64', '10.0.17763.0');
 
     expect(manifest).toContain('<Capability Name="internetClient"');
-    expect(manifest).toContain('<Capability Name="webcam"');
+    expect(manifest).toContain('<DeviceCapability Name="webcam"');
+    expect(manifest).toContain('<rescap:Capability Name="broadFileSystemAccess"');
+  });
+
+  it('always includes runFullTrust restricted capability', () => {
+    const manifest = generateManifest(mockConfig, 'x64', '10.0.17763.0');
+    expect(manifest).toContain('<rescap:Capability Name="runFullTrust"');
   });
 
   it('includes share target extension when enabled', () => {

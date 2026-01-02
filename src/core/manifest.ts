@@ -1,7 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { MergedConfig } from '../types.js';
+import type { MergedConfig, CapabilitiesConfig } from '../types.js';
+import { DEFAULT_CAPABILITIES } from '../types.js';
 import { replaceTemplateVariables } from '../utils/template.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -57,7 +58,7 @@ export function generateManifest(config: MergedConfig, arch: string, minVersion:
     EXECUTABLE: `${config.displayName.replace(/\s+/g, '')}.exe`,
     DESCRIPTION: config.description || config.displayName,
     EXTENSIONS: generateExtensions(config),
-    CAPABILITIES: generateCapabilities(config.capabilities || []),
+    CAPABILITIES: generateCapabilities(config.capabilities || DEFAULT_CAPABILITIES),
   };
 
   return replaceTemplateVariables(getManifestTemplate(), variables);
@@ -239,15 +240,31 @@ function generateExtensions(config: MergedConfig): string {
   return `      <Extensions>\n${extensions.join('\n\n')}\n      </Extensions>`;
 }
 
-function generateCapabilities(capabilities: string[]): string {
+function generateCapabilities(config: CapabilitiesConfig): string {
   const caps: string[] = [];
 
   // runFullTrust is always required for Tauri apps using Windows.FullTrustApplication
   caps.push('    <rescap:Capability Name="runFullTrust" />');
 
-  // Add user-specified capabilities
-  for (const cap of capabilities) {
-    caps.push(`    <Capability Name="${cap}" />`);
+  // Add general capabilities
+  if (config.general) {
+    for (const cap of config.general) {
+      caps.push(`    <Capability Name="${cap}" />`);
+    }
+  }
+
+  // Add device capabilities
+  if (config.device) {
+    for (const cap of config.device) {
+      caps.push(`    <DeviceCapability Name="${cap}" />`);
+    }
+  }
+
+  // Add restricted capabilities
+  if (config.restricted) {
+    for (const cap of config.restricted) {
+      caps.push(`    <rescap:Capability Name="${cap}" />`);
+    }
   }
 
   return caps.join('\n');

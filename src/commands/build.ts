@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import type { BuildOptions, MergedConfig } from '../types.js';
-import { DEFAULT_MIN_WINDOWS_VERSION, DEFAULT_RUNNER } from '../types.js';
+import { DEFAULT_MIN_WINDOWS_VERSION, DEFAULT_RUNNER, validateCapabilities } from '../types.js';
 import {
   findProjectRoot,
   readTauriConfig,
@@ -68,6 +68,18 @@ export async function build(options: BuildOptions): Promise<void> {
   // Read configs
   const tauriConfig = readTauriConfig(projectRoot);
   const bundleConfig = readBundleConfig(windowsDir);
+
+  // Validate capabilities
+  if (bundleConfig.capabilities) {
+    const errors = validateCapabilities(bundleConfig.capabilities);
+    if (errors.length > 0) {
+      console.error('Invalid capabilities in bundle.config.json:');
+      for (const error of errors) {
+        console.error(`  - ${error}`);
+      }
+      process.exit(1);
+    }
+  }
 
   // Merge config
   const config: MergedConfig = {

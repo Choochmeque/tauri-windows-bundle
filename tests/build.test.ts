@@ -77,7 +77,7 @@ describe('build command', () => {
       JSON.stringify({
         publisher: 'CN=TestCompany',
         publisherDisplayName: 'Test Company',
-        capabilities: ['internetClient'],
+        capabilities: { general: ['internetClient'] },
       })
     );
 
@@ -290,7 +290,7 @@ describe('build command', () => {
       JSON.stringify({
         publisher: 'CN=TestCompany',
         publisherDisplayName: 'Test Company',
-        capabilities: ['internetClient'],
+        capabilities: { general: ['internetClient'] },
         signing: {
           pfx: '/path/to/cert.pfx',
           pfxPassword: 'secret',
@@ -425,5 +425,55 @@ describe('build command', () => {
       expect.stringContaining('yarn tauri build'),
       expect.any(Object)
     );
+  });
+
+  it('exits with error for invalid capabilities', async () => {
+    const projectDir = createFullProject();
+    const windowsDir = path.join(projectDir, 'src-tauri', 'gen', 'windows');
+    fs.writeFileSync(
+      path.join(windowsDir, 'bundle.config.json'),
+      JSON.stringify({
+        publisher: 'CN=TestCompany',
+        publisherDisplayName: 'Test Company',
+        capabilities: { general: ['invalidCapability'] },
+      })
+    );
+
+    const originalCwd = process.cwd();
+    process.chdir(tempDir);
+
+    await expect(build({})).rejects.toThrow('process.exit called');
+
+    process.chdir(originalCwd);
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Invalid capabilities in bundle.config.json:');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Invalid general capability')
+    );
+    expect(processExitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('exits with error for multiple invalid capabilities', async () => {
+    const projectDir = createFullProject();
+    const windowsDir = path.join(projectDir, 'src-tauri', 'gen', 'windows');
+    fs.writeFileSync(
+      path.join(windowsDir, 'bundle.config.json'),
+      JSON.stringify({
+        publisher: 'CN=TestCompany',
+        publisherDisplayName: 'Test Company',
+        capabilities: {
+          general: ['badCap1'],
+          device: ['badDevice'],
+        },
+      })
+    );
+
+    const originalCwd = process.cwd();
+    process.chdir(tempDir);
+
+    await expect(build({})).rejects.toThrow('process.exit called');
+
+    process.chdir(originalCwd);
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Invalid capabilities in bundle.config.json:');
+    expect(processExitSpy).toHaveBeenCalledWith(1);
   });
 });

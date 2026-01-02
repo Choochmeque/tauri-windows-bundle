@@ -61,13 +61,33 @@ Edit `src-tauri/gen/windows/bundle.config.json`:
 {
   "publisher": "CN=YourCompany",
   "publisherDisplayName": "Your Company Name",
-  "capabilities": ["internetClient"],
+  "capabilities": {
+    "general": ["internetClient"]
+  },
   "signing": {
     "pfx": null,
     "pfxPassword": null
   }
 }
 ```
+
+**Capabilities** are validated at build time. Three types are supported:
+
+```json
+{
+  "capabilities": {
+    "general": ["internetClient", "internetClientServer", "privateNetworkClientServer"],
+    "device": ["webcam", "microphone", "location", "bluetooth"],
+    "restricted": ["broadFileSystemAccess", "allowElevation"]
+  }
+}
+```
+
+- `general` - Standard capabilities (`<Capability>`)
+- `device` - Device access (`<DeviceCapability>`)
+- `restricted` - Requires Store approval (`<rescap:Capability>`)
+
+Note: `runFullTrust` is always auto-added (required for Tauri apps).
 
 **Auto-read from tauri.conf.json:**
 - `displayName` ← `productName`
