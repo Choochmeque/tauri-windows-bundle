@@ -47,7 +47,8 @@
     "multiarch",
     "msvc",
     "rustup",
-    "archs"
+    "archs",
+    "rescap"
   ],
   "useGitignore": true,
   "ignorePaths": [
