@@ -1,4 +1,4 @@
-import { exec } from 'node:child_process';
+import { exec, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import * as readline from 'node:readline';
 
@@ -56,6 +56,37 @@ export async function promptInstall(message: string): Promise<boolean> {
     rl.question(`${message} [y/N] `, (answer) => {
       rl.close();
       resolve(answer.toLowerCase() === 'y');
+    });
+  });
+}
+
+export async function execWithProgress(command: string, options?: { cwd?: string }): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const [cmd, ...args] = command.split(' ');
+    const child = spawn(cmd, args, {
+      cwd: options?.cwd,
+      stdio: ['inherit', 'pipe', 'pipe'],
+      shell: true,
+    });
+
+    child.stdout?.on('data', (data: Buffer) => {
+      process.stdout.write(data);
+    });
+
+    child.stderr?.on('data', (data: Buffer) => {
+      process.stderr.write(data);
+    });
+
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Command failed with exit code ${code}`));
+      }
+    });
+
+    child.on('error', (error) => {
+      reject(error);
     });
   });
 }

@@ -115,7 +115,10 @@ export interface BuildOptions {
   arch?: string;
   release?: boolean;
   minWindows?: string;
+  runner?: string;
 }
+
+export const DEFAULT_RUNNER = 'cargo';
 
 export interface MsixAsset {
   name: string;

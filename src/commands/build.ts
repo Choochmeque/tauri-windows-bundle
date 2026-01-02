@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import type { BuildOptions, MergedConfig } from '../types.js';
-import { DEFAULT_MIN_WINDOWS_VERSION } from '../types.js';
+import { DEFAULT_MIN_WINDOWS_VERSION, DEFAULT_RUNNER } from '../types.js';
 import {
   findProjectRoot,
   readTauriConfig,
@@ -11,6 +11,7 @@ import {
 import { prepareAppxContent } from '../core/appx-content.js';
 import {
   execAsync,
+  execWithProgress,
   isMsixbundleCliInstalled,
   getMsixbundleCliVersion,
   isVersionSufficient,
@@ -28,10 +29,10 @@ export async function build(options: BuildOptions): Promise<void> {
     );
 
     if (shouldInstall) {
-      console.log('Installing msixbundle-cli...');
+      console.log('Installing msixbundle-cli...\n');
       try {
-        await execAsync('cargo install msixbundle-cli');
-        console.log('  msixbundle-cli installed\n');
+        await execWithProgress('cargo install msixbundle-cli');
+        console.log('\n  msixbundle-cli installed\n');
       } catch (error) {
         console.error('Failed to install msixbundle-cli:', error);
         console.log('\nInstall manually: cargo install msixbundle-cli');
@@ -81,6 +82,8 @@ export async function build(options: BuildOptions): Promise<void> {
   const minVersion = options.minWindows || DEFAULT_MIN_WINDOWS_VERSION;
   const appxDirs: { arch: string; dir: string }[] = [];
 
+  const runner = options.runner || DEFAULT_RUNNER;
+
   for (const arch of architectures) {
     console.log(`Building for ${arch}...`);
 
@@ -88,9 +91,19 @@ export async function build(options: BuildOptions): Promise<void> {
     const target = arch === 'x64' ? 'x86_64-pc-windows-msvc' : 'aarch64-pc-windows-msvc';
     const releaseFlag = options.release ? '--release' : '';
 
+    // Build command based on runner
+    let buildCommand: string;
+    if (runner === 'npm') {
+      // npm requires -- to pass args to the script
+      buildCommand = `npm run tauri build -- --target ${target} ${releaseFlag}`.trim();
+    } else {
+      // cargo, pnpm, yarn, bun, etc.
+      buildCommand = `${runner} tauri build --target ${target} ${releaseFlag}`.trim();
+    }
+
     try {
-      console.log(`  Running: cargo tauri build --target ${target} ${releaseFlag}`);
-      await execAsync(`cargo tauri build --target ${target} ${releaseFlag}`.trim(), {
+      console.log(`  Running: ${buildCommand}\n`);
+      await execWithProgress(buildCommand, {
         cwd: projectRoot,
       });
     } catch (error) {

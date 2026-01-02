@@ -5,9 +5,12 @@ type ExecCallback = (error: Error | null, result: { stdout: string; stderr: stri
 // Mock child_process - use hoisted mock
 vi.mock('node:child_process', () => {
   const mockExec = vi.fn();
+  const mockSpawn = vi.fn();
   return {
     exec: mockExec,
+    spawn: mockSpawn,
     __mockExec: mockExec,
+    __mockSpawn: mockSpawn,
   };
 });
 
@@ -28,6 +31,7 @@ vi.mock('node:readline', () => {
 // Import after mocks
 import {
   execAsync,
+  execWithProgress,
   isMsixbundleCliInstalled,
   getMsixbundleCliVersion,
   isVersionSufficient,
@@ -39,6 +43,8 @@ import * as readline from 'node:readline';
 
 // Get mock references
 const mockExec = (childProcess as unknown as { __mockExec: ReturnType<typeof vi.fn> }).__mockExec;
+const mockSpawn = (childProcess as unknown as { __mockSpawn: ReturnType<typeof vi.fn> })
+  .__mockSpawn;
 const mockQuestion = (readline as unknown as { __mockQuestion: ReturnType<typeof vi.fn> })
   .__mockQuestion;
 const mockClose = (readline as unknown as { __mockClose: ReturnType<typeof vi.fn> }).__mockClose;
@@ -255,5 +261,110 @@ describe('isVersionSufficient', () => {
     expect(isVersionSufficient('1.0.0', MIN_MSIXBUNDLE_CLI_VERSION)).toBe(true);
     expect(isVersionSufficient('0.9.9', MIN_MSIXBUNDLE_CLI_VERSION)).toBe(false);
     expect(isVersionSufficient('1.1.0', MIN_MSIXBUNDLE_CLI_VERSION)).toBe(true);
+  });
+});
+
+describe('execWithProgress', () => {
+  beforeEach(() => {
+    mockSpawn.mockReset();
+  });
+
+  function createMockChildProcess(exitCode: number = 0, emitError: Error | null = null) {
+    const stdout = {
+      on: vi.fn((event: string, callback: (data: Buffer) => void) => {
+        if (event === 'data') {
+          callback(Buffer.from('stdout output'));
+        }
+      }),
+    };
+    const stderr = {
+      on: vi.fn((event: string, callback: (data: Buffer) => void) => {
+        if (event === 'data') {
+          callback(Buffer.from('stderr output'));
+        }
+      }),
+    };
+    const listeners: Record<string, ((...args: unknown[]) => void)[]> = {};
+
+    const child = {
+      stdout,
+      stderr,
+      on: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
+        if (!listeners[event]) {
+          listeners[event] = [];
+        }
+        listeners[event].push(callback);
+
+        // Simulate async close/error events
+        setTimeout(() => {
+          if (event === 'close' && !emitError) {
+            callback(exitCode);
+          } else if (event === 'error' && emitError) {
+            callback(emitError);
+          }
+        }, 0);
+      }),
+    };
+
+    return child;
+  }
+
+  it('resolves when command succeeds', async () => {
+    const mockChild = createMockChildProcess(0);
+    mockSpawn.mockReturnValue(mockChild);
+
+    await expect(execWithProgress('echo test')).resolves.toBeUndefined();
+    expect(mockSpawn).toHaveBeenCalledWith('echo', ['test'], expect.any(Object));
+  });
+
+  it('rejects when command fails with non-zero exit code', async () => {
+    const mockChild = createMockChildProcess(1);
+    mockSpawn.mockReturnValue(mockChild);
+
+    await expect(execWithProgress('fail command')).rejects.toThrow(
+      'Command failed with exit code 1'
+    );
+  });
+
+  it('rejects on spawn error', async () => {
+    const mockChild = createMockChildProcess(0, new Error('spawn failed'));
+    mockSpawn.mockReturnValue(mockChild);
+
+    await expect(execWithProgress('fail command')).rejects.toThrow('spawn failed');
+  });
+
+  it('passes cwd option to spawn', async () => {
+    const mockChild = createMockChildProcess(0);
+    mockSpawn.mockReturnValue(mockChild);
+
+    await execWithProgress('echo test', { cwd: '/tmp' });
+
+    expect(mockSpawn).toHaveBeenCalledWith('echo', ['test'], {
+      cwd: '/tmp',
+      stdio: ['inherit', 'pipe', 'pipe'],
+      shell: true,
+    });
+  });
+
+  it('writes stdout to process.stdout', async () => {
+    const mockChild = createMockChildProcess(0);
+    mockSpawn.mockReturnValue(mockChild);
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    await execWithProgress('echo test');
+
+    expect(writeSpy).toHaveBeenCalledWith(Buffer.from('stdout output'));
+    writeSpy.mockRestore();
+  });
+
+  it('writes stderr to process.stderr', async () => {
+    const mockChild = createMockChildProcess(0);
+    mockSpawn.mockReturnValue(mockChild);
+    const writeSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+
+    await execWithProgress('echo test');
+
+    expect(writeSpy).toHaveBeenCalledWith(Buffer.from('stderr output'));
+    writeSpy.mockRestore();
   });
 });

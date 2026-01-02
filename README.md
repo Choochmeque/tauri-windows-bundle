@@ -77,7 +77,7 @@ Edit `src-tauri/gen/windows/bundle.config.json`:
 ### Build
 
 ```bash
-# Build x64 only (default)
+# Build x64 only (default, uses cargo)
 pnpm tauri:windows:build
 
 # Build multiarch bundle (x64 + arm64)
@@ -85,6 +85,10 @@ pnpm tauri:windows:build --arch x64,arm64
 
 # Release build
 pnpm tauri:windows:build --release
+
+# Use different build runner (pnpm, npm, yarn, bun, etc.)
+pnpm tauri:windows:build --runner pnpm
+pnpm tauri:windows:build --runner npm
 ```
 
 ### Output

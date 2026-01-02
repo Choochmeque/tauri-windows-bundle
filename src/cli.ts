@@ -49,6 +49,7 @@ program
   .option('--arch <architectures>', 'Architectures to build (comma-separated: x64,arm64)', 'x64')
   .option('--release', 'Build in release mode')
   .option('--min-windows <version>', 'Minimum Windows version', '10.0.17763.0')
+  .option('--runner <runner>', 'Build runner (cargo, pnpm, npm, yarn, etc.)', 'cargo')
   .action(async (options) => {
     try {
       await build(options);

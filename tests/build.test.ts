@@ -6,6 +6,7 @@ import * as os from 'node:os';
 // Mock exec utilities before importing build
 vi.mock('../src/utils/exec.js', () => ({
   execAsync: vi.fn().mockResolvedValue({ stdout: '', stderr: '' }),
+  execWithProgress: vi.fn().mockResolvedValue(undefined),
   isMsixbundleCliInstalled: vi.fn().mockResolvedValue(true),
   getMsixbundleCliVersion: vi.fn().mockResolvedValue('1.0.0'),
   isVersionSufficient: vi.fn().mockReturnValue(true),
@@ -16,6 +17,7 @@ vi.mock('../src/utils/exec.js', () => ({
 import { build } from '../src/commands/build.js';
 import {
   execAsync,
+  execWithProgress,
   isMsixbundleCliInstalled,
   getMsixbundleCliVersion,
   isVersionSufficient,
@@ -42,6 +44,7 @@ describe('build command', () => {
     vi.mocked(getMsixbundleCliVersion).mockResolvedValue('1.0.0');
     vi.mocked(isVersionSufficient).mockReturnValue(true);
     vi.mocked(execAsync).mockResolvedValue({ stdout: '', stderr: '' });
+    vi.mocked(execWithProgress).mockResolvedValue(undefined);
     vi.mocked(promptInstall).mockResolvedValue(false);
   });
 
@@ -134,7 +137,7 @@ describe('build command', () => {
     }
 
     process.chdir(originalCwd);
-    expect(execAsync).toHaveBeenCalledWith('cargo install msixbundle-cli');
+    expect(execWithProgress).toHaveBeenCalledWith('cargo install msixbundle-cli');
   });
 
   it('exits when user declines installation', async () => {
@@ -153,7 +156,7 @@ describe('build command', () => {
   it('handles cargo install failure', async () => {
     vi.mocked(isMsixbundleCliInstalled).mockResolvedValue(false);
     vi.mocked(promptInstall).mockResolvedValue(true);
-    vi.mocked(execAsync).mockRejectedValueOnce(new Error('cargo failed'));
+    vi.mocked(execWithProgress).mockRejectedValueOnce(new Error('cargo failed'));
 
     const originalCwd = process.cwd();
     process.chdir(tempDir);
@@ -209,7 +212,7 @@ describe('build command', () => {
     }
 
     process.chdir(originalCwd);
-    expect(execAsync).toHaveBeenCalledWith(
+    expect(execWithProgress).toHaveBeenCalledWith(
       expect.stringContaining('x86_64-pc-windows-msvc'),
       expect.any(Object)
     );
@@ -232,7 +235,7 @@ describe('build command', () => {
     }
 
     process.chdir(originalCwd);
-    expect(execAsync).toHaveBeenCalledWith(
+    expect(execWithProgress).toHaveBeenCalledWith(
       expect.stringContaining('aarch64-pc-windows-msvc'),
       expect.any(Object)
     );
@@ -250,7 +253,7 @@ describe('build command', () => {
     }
 
     process.chdir(originalCwd);
-    expect(execAsync).toHaveBeenCalledWith(
+    expect(execWithProgress).toHaveBeenCalledWith(
       expect.stringContaining('--release'),
       expect.any(Object)
     );
@@ -258,7 +261,7 @@ describe('build command', () => {
 
   it('handles cargo build failure', async () => {
     createFullProject();
-    vi.mocked(execAsync).mockRejectedValue(new Error('cargo build failed'));
+    vi.mocked(execWithProgress).mockRejectedValue(new Error('cargo build failed'));
 
     const originalCwd = process.cwd();
     process.chdir(tempDir);
@@ -331,10 +334,8 @@ describe('build command', () => {
   it('handles msixbundle-cli failure', async () => {
     createFullProject();
 
-    // Mock: first call (cargo build) succeeds, second call (msixbundle-cli) fails
-    vi.mocked(execAsync)
-      .mockResolvedValueOnce({ stdout: '', stderr: '' }) // cargo build
-      .mockRejectedValueOnce(new Error('msixbundle-cli failed')); // msixbundle-cli
+    // Mock: msixbundle-cli fails (execAsync is used for msixbundle-cli)
+    vi.mocked(execAsync).mockRejectedValueOnce(new Error('msixbundle-cli failed'));
 
     const originalCwd = process.cwd();
     process.chdir(tempDir);
@@ -343,5 +344,77 @@ describe('build command', () => {
 
     process.chdir(originalCwd);
     expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to create MSIX:', expect.any(Error));
+  });
+
+  it('uses cargo runner by default', async () => {
+    createFullProject();
+    const originalCwd = process.cwd();
+    process.chdir(tempDir);
+
+    try {
+      await build({});
+    } catch {
+      // Expected
+    }
+
+    process.chdir(originalCwd);
+    expect(execWithProgress).toHaveBeenCalledWith(
+      expect.stringContaining('cargo tauri build'),
+      expect.any(Object)
+    );
+  });
+
+  it('uses pnpm runner when specified', async () => {
+    createFullProject();
+    const originalCwd = process.cwd();
+    process.chdir(tempDir);
+
+    try {
+      await build({ runner: 'pnpm' });
+    } catch {
+      // Expected
+    }
+
+    process.chdir(originalCwd);
+    expect(execWithProgress).toHaveBeenCalledWith(
+      expect.stringContaining('pnpm tauri build'),
+      expect.any(Object)
+    );
+  });
+
+  it('uses npm runner with -- separator', async () => {
+    createFullProject();
+    const originalCwd = process.cwd();
+    process.chdir(tempDir);
+
+    try {
+      await build({ runner: 'npm' });
+    } catch {
+      // Expected
+    }
+
+    process.chdir(originalCwd);
+    expect(execWithProgress).toHaveBeenCalledWith(
+      expect.stringContaining('npm run tauri build --'),
+      expect.any(Object)
+    );
+  });
+
+  it('uses yarn runner when specified', async () => {
+    createFullProject();
+    const originalCwd = process.cwd();
+    process.chdir(tempDir);
+
+    try {
+      await build({ runner: 'yarn' });
+    } catch {
+      // Expected
+    }
+
+    process.chdir(originalCwd);
+    expect(execWithProgress).toHaveBeenCalledWith(
+      expect.stringContaining('yarn tauri build'),
+      expect.any(Object)
+    );
   });
 });
