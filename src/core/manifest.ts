@@ -235,7 +235,17 @@ function generateExtensions(config: MergedConfig): string {
 }
 
 function generateCapabilities(capabilities: string[]): string {
-  return capabilities.map((cap) => `    <Capability Name="${cap}" />`).join('\n');
+  const caps: string[] = [];
+
+  // runFullTrust is always required for Tauri apps using Windows.FullTrustApplication
+  caps.push('    <rescap:Capability Name="runFullTrust" />');
+
+  // Add user-specified capabilities
+  for (const cap of capabilities) {
+    caps.push(`    <Capability Name="${cap}" />`);
+  }
+
+  return caps.join('\n');
 }
 
 function generateClsid(seed: string): string {
