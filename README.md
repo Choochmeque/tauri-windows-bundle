@@ -29,12 +29,14 @@ rustup target add aarch64-pc-windows-msvc
 ## Installation
 
 ```bash
-# One-time setup
-npx @choochmeque/tauri-windows-bundle init
+# One-time setup (use @latest to ensure newest version)
+npx @choochmeque/tauri-windows-bundle@latest init
 
 # Or install as dev dependency
 npm install -D @choochmeque/tauri-windows-bundle
 ```
+
+> **Tip:** Use `@latest` with npx to bypass cached versions: `npx @choochmeque/tauri-windows-bundle@latest --version`
 
 ## Usage
 

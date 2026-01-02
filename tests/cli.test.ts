@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 type ActionHandler = (...args: unknown[]) => Promise<void>;
 const actionHandlers: Record<string, ActionHandler> = {};
 let currentCommandPath: string[] = [];
+let capturedVersion: string | undefined;
 
 // Mock commander before importing cli
 vi.mock('commander', () => {
@@ -12,7 +13,10 @@ vi.mock('commander', () => {
 
     mock.name = vi.fn(() => mock);
     mock.description = vi.fn(() => mock);
-    mock.version = vi.fn(() => mock);
+    mock.version = vi.fn((v: string) => {
+      capturedVersion = v;
+      return mock;
+    });
     mock.option = vi.fn(() => mock);
     mock.parse = vi.fn(() => mock);
     mock.argument = vi.fn(() => mock);
@@ -78,6 +82,7 @@ describe('cli', () => {
     // Reset action handlers
     Object.keys(actionHandlers).forEach((key) => delete actionHandlers[key]);
     currentCommandPath = [];
+    capturedVersion = undefined;
 
     // Clear module cache and reimport to trigger setup
     vi.resetModules();
@@ -88,6 +93,19 @@ describe('cli', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('version', () => {
+    it('reads version from package.json', async () => {
+      // Read actual package.json version
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+      const packageJson = JSON.parse(
+        fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8')
+      );
+
+      expect(capturedVersion).toBe(packageJson.version);
+    });
   });
 
   describe('init command', () => {

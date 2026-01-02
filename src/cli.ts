@@ -1,6 +1,10 @@
 import { Command } from 'commander';
+import { createRequire } from 'node:module';
 import { init } from './commands/init.js';
 import { build } from './commands/build.js';
+
+const require = createRequire(import.meta.url);
+const pkg = require('../package.json');
 import {
   extensionList,
   extensionAddFileAssociation,
@@ -28,7 +32,7 @@ const program = new Command();
 program
   .name('tauri-windows-bundle')
   .description('MSIX packaging tool for Tauri apps')
-  .version('0.1.0');
+  .version(pkg.version);
 
 program
   .command('init')
