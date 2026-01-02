@@ -127,6 +127,7 @@ export async function build(options: BuildOptions): Promise<void> {
   const outDir = path.join(projectRoot, 'src-tauri', 'target', 'msix');
 
   const args = [
+    '--force',
     '--out-dir',
     outDir,
     ...appxDirs.flatMap(({ arch, dir }) => [`--dir-${arch}`, dir]),
