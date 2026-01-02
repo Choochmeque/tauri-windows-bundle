@@ -29,10 +29,11 @@ export async function build(options: BuildOptions): Promise<void> {
     );
 
     if (shouldInstall) {
-      console.log('Installing msixbundle-cli...\n');
       try {
-        await execWithProgress('cargo install msixbundle-cli');
-        console.log('\n  msixbundle-cli installed\n');
+        await execWithProgress('cargo install msixbundle-cli', {
+          verbose: options.verbose,
+          message: 'Installing msixbundle-cli...',
+        });
       } catch (error) {
         console.error('Failed to install msixbundle-cli:', error);
         console.log('\nInstall manually: cargo install msixbundle-cli');
@@ -85,29 +86,29 @@ export async function build(options: BuildOptions): Promise<void> {
   const runner = options.runner || DEFAULT_RUNNER;
 
   for (const arch of architectures) {
-    console.log(`Building for ${arch}...`);
-
     // Build Tauri app
     const target = arch === 'x64' ? 'x86_64-pc-windows-msvc' : 'aarch64-pc-windows-msvc';
     const releaseFlag = options.release ? '--release' : '';
 
     // Build command based on runner
-    // --bundles none skips MSI/NSIS bundling since we're creating MSIX
+    // --no-bundle skips MSI/NSIS bundling since we're creating MSIX
     let buildCommand: string;
     if (runner === 'npm') {
       // npm requires -- to pass args to the script
-      buildCommand =
-        `npm run tauri build -- --target ${target} --bundles none ${releaseFlag}`.trim();
+      buildCommand = `npm run tauri build -- --target ${target} --no-bundle ${releaseFlag}`.trim();
     } else {
       // cargo, pnpm, yarn, bun, etc.
-      buildCommand =
-        `${runner} tauri build --target ${target} --bundles none ${releaseFlag}`.trim();
+      buildCommand = `${runner} tauri build --target ${target} --no-bundle ${releaseFlag}`.trim();
     }
 
     try {
-      console.log(`  Running: ${buildCommand}\n`);
+      if (options.verbose) {
+        console.log(`  Running: ${buildCommand}\n`);
+      }
       await execWithProgress(buildCommand, {
         cwd: projectRoot,
+        verbose: options.verbose,
+        message: `Building for ${arch}...`,
       });
     } catch (error) {
       console.error(`Failed to build for ${arch}:`, error);

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 type ExecCallback = (error: Error | null, result: { stdout: string; stderr: string }) => void;
 
@@ -37,6 +37,7 @@ import {
   isVersionSufficient,
   MIN_MSIXBUNDLE_CLI_VERSION,
   promptInstall,
+  Spinner,
 } from '../src/utils/exec.js';
 import * as childProcess from 'node:child_process';
 import * as readline from 'node:readline';
@@ -346,25 +347,104 @@ describe('execWithProgress', () => {
     });
   });
 
-  it('writes stdout to process.stdout', async () => {
+  it('writes stdout to process.stdout in verbose mode', async () => {
     const mockChild = createMockChildProcess(0);
     mockSpawn.mockReturnValue(mockChild);
     const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
-    await execWithProgress('echo test');
+    await execWithProgress('echo test', { verbose: true });
 
     expect(writeSpy).toHaveBeenCalledWith(Buffer.from('stdout output'));
     writeSpy.mockRestore();
   });
 
-  it('writes stderr to process.stderr', async () => {
+  it('writes stderr to process.stderr in verbose mode', async () => {
     const mockChild = createMockChildProcess(0);
     mockSpawn.mockReturnValue(mockChild);
     const writeSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
 
-    await execWithProgress('echo test');
+    await execWithProgress('echo test', { verbose: true });
 
     expect(writeSpy).toHaveBeenCalledWith(Buffer.from('stderr output'));
     writeSpy.mockRestore();
+  });
+
+  it('shows spinner instead of output when not verbose', async () => {
+    const mockChild = createMockChildProcess(0);
+    mockSpawn.mockReturnValue(mockChild);
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    await execWithProgress('echo test', { message: 'Testing...' });
+
+    // Spinner writes to stdout with carriage return
+    expect(writeSpy).toHaveBeenCalledWith(expect.stringContaining('Testing...'));
+    writeSpy.mockRestore();
+  });
+
+  it('shows captured output on error when not verbose', async () => {
+    const mockChild = createMockChildProcess(1);
+    mockSpawn.mockReturnValue(mockChild);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    await expect(execWithProgress('fail command', { message: 'Failing...' })).rejects.toThrow(
+      'Command failed with exit code 1'
+    );
+
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Build output:'));
+    errorSpy.mockRestore();
+  });
+});
+
+describe('Spinner', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('starts and stops with success symbol', () => {
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    const spinner = new Spinner('Loading...');
+    spinner.start();
+
+    // Let it run one frame
+    vi.advanceTimersByTime(80);
+
+    spinner.stop(true);
+
+    // Should have written spinner frame and success message
+    expect(writeSpy).toHaveBeenCalledWith(expect.stringContaining('Loading...'));
+    expect(writeSpy).toHaveBeenCalledWith(expect.stringContaining('✓'));
+
+    writeSpy.mockRestore();
+  });
+
+  it('stops with failure symbol when fail() is called', () => {
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    const spinner = new Spinner('Processing...');
+    spinner.start();
+    spinner.fail();
+
+    expect(writeSpy).toHaveBeenCalledWith(expect.stringContaining('✗'));
+
+    writeSpy.mockRestore();
+  });
+
+  it('clears interval on stop', () => {
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const clearSpy = vi.spyOn(global, 'clearInterval');
+
+    const spinner = new Spinner('Test');
+    spinner.start();
+    spinner.stop();
+
+    expect(clearSpy).toHaveBeenCalled();
+
+    clearSpy.mockRestore();
   });
 });

@@ -137,7 +137,10 @@ describe('build command', () => {
     }
 
     process.chdir(originalCwd);
-    expect(execWithProgress).toHaveBeenCalledWith('cargo install msixbundle-cli');
+    expect(execWithProgress).toHaveBeenCalledWith('cargo install msixbundle-cli', {
+      verbose: undefined,
+      message: 'Installing msixbundle-cli...',
+    });
   });
 
   it('exits when user declines installation', async () => {

@@ -50,6 +50,7 @@ program
   .option('--release', 'Build in release mode')
   .option('--min-windows <version>', 'Minimum Windows version', '10.0.17763.0')
   .option('--runner <runner>', 'Build runner (cargo, pnpm, npm, yarn, etc.)', 'cargo')
+  .option('--verbose', 'Show full build output instead of spinner')
   .action(async (options) => {
     try {
       await build(options);

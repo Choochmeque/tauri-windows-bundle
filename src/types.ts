@@ -116,6 +116,7 @@ export interface BuildOptions {
   release?: boolean;
   minWindows?: string;
   runner?: string;
+  verbose?: boolean;
 }
 
 export const DEFAULT_RUNNER = 'cargo';
