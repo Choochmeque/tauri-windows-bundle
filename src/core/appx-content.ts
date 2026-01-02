@@ -12,8 +12,9 @@ export function prepareAppxContent(
   minVersion: string
 ): string {
   const target = arch === 'x64' ? 'x86_64-pc-windows-msvc' : 'aarch64-pc-windows-msvc';
-  const buildDir = path.join(projectRoot, 'target', target, 'release');
-  const appxDir = path.join(projectRoot, 'target', 'appx', arch);
+  const srcTauriDir = path.join(projectRoot, 'src-tauri');
+  const buildDir = path.join(srcTauriDir, 'target', target, 'release');
+  const appxDir = path.join(srcTauriDir, 'target', 'appx', arch);
 
   // Create directories
   fs.mkdirSync(path.join(appxDir, 'Assets'), { recursive: true });

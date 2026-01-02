@@ -82,7 +82,7 @@ describe('build command', () => {
     );
 
     // Create build output
-    const buildDir = path.join(tempDir, 'target', 'x86_64-pc-windows-msvc', 'release');
+    const buildDir = path.join(tempDir, 'src-tauri', 'target', 'x86_64-pc-windows-msvc', 'release');
     fs.mkdirSync(buildDir, { recursive: true });
     fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
 
@@ -224,7 +224,13 @@ describe('build command', () => {
   it('builds for arm64 architecture when specified', async () => {
     // Create arm64 build output
     createFullProject();
-    const buildDir = path.join(tempDir, 'target', 'aarch64-pc-windows-msvc', 'release');
+    const buildDir = path.join(
+      tempDir,
+      'src-tauri',
+      'target',
+      'aarch64-pc-windows-msvc',
+      'release'
+    );
     fs.mkdirSync(buildDir, { recursive: true });
     fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
 

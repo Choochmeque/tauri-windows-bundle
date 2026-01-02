@@ -33,7 +33,7 @@ describe('prepareAppxContent', () => {
 
   it('creates AppxContent directory structure', () => {
     // Create required exe
-    const buildDir = path.join(tempDir, 'target', 'x86_64-pc-windows-msvc', 'release');
+    const buildDir = path.join(tempDir, 'src-tauri', 'target', 'x86_64-pc-windows-msvc', 'release');
     fs.mkdirSync(buildDir, { recursive: true });
     fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
 
@@ -44,7 +44,7 @@ describe('prepareAppxContent', () => {
   });
 
   it('copies executable to appx directory', () => {
-    const buildDir = path.join(tempDir, 'target', 'x86_64-pc-windows-msvc', 'release');
+    const buildDir = path.join(tempDir, 'src-tauri', 'target', 'x86_64-pc-windows-msvc', 'release');
     fs.mkdirSync(buildDir, { recursive: true });
     fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe content');
 
@@ -54,7 +54,7 @@ describe('prepareAppxContent', () => {
   });
 
   it('generates AppxManifest.xml', () => {
-    const buildDir = path.join(tempDir, 'target', 'x86_64-pc-windows-msvc', 'release');
+    const buildDir = path.join(tempDir, 'src-tauri', 'target', 'x86_64-pc-windows-msvc', 'release');
     fs.mkdirSync(buildDir, { recursive: true });
     fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
 
@@ -75,7 +75,13 @@ describe('prepareAppxContent', () => {
   });
 
   it('handles arm64 architecture', () => {
-    const buildDir = path.join(tempDir, 'target', 'aarch64-pc-windows-msvc', 'release');
+    const buildDir = path.join(
+      tempDir,
+      'src-tauri',
+      'target',
+      'aarch64-pc-windows-msvc',
+      'release'
+    );
     fs.mkdirSync(buildDir, { recursive: true });
     fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
 
@@ -92,7 +98,7 @@ describe('prepareAppxContent', () => {
   });
 
   it('copies Windows assets if they exist', () => {
-    const buildDir = path.join(tempDir, 'target', 'x86_64-pc-windows-msvc', 'release');
+    const buildDir = path.join(tempDir, 'src-tauri', 'target', 'x86_64-pc-windows-msvc', 'release');
     fs.mkdirSync(buildDir, { recursive: true });
     fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
 
@@ -106,7 +112,7 @@ describe('prepareAppxContent', () => {
   });
 
   it('copies bundled resources from tauri config (string pattern)', () => {
-    const buildDir = path.join(tempDir, 'target', 'x86_64-pc-windows-msvc', 'release');
+    const buildDir = path.join(tempDir, 'src-tauri', 'target', 'x86_64-pc-windows-msvc', 'release');
     fs.mkdirSync(buildDir, { recursive: true });
     fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
 
@@ -133,7 +139,7 @@ describe('prepareAppxContent', () => {
   });
 
   it('copies bundled resources with src/target mapping', () => {
-    const buildDir = path.join(tempDir, 'target', 'x86_64-pc-windows-msvc', 'release');
+    const buildDir = path.join(tempDir, 'src-tauri', 'target', 'x86_64-pc-windows-msvc', 'release');
     fs.mkdirSync(buildDir, { recursive: true });
     fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
 
@@ -160,7 +166,7 @@ describe('prepareAppxContent', () => {
   });
 
   it('copies directory resources', () => {
-    const buildDir = path.join(tempDir, 'target', 'x86_64-pc-windows-msvc', 'release');
+    const buildDir = path.join(tempDir, 'src-tauri', 'target', 'x86_64-pc-windows-msvc', 'release');
     fs.mkdirSync(buildDir, { recursive: true });
     fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
 
@@ -187,7 +193,7 @@ describe('prepareAppxContent', () => {
   });
 
   it('copies directory resources using string pattern (glob)', () => {
-    const buildDir = path.join(tempDir, 'target', 'x86_64-pc-windows-msvc', 'release');
+    const buildDir = path.join(tempDir, 'src-tauri', 'target', 'x86_64-pc-windows-msvc', 'release');
     fs.mkdirSync(buildDir, { recursive: true });
     fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
 

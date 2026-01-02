@@ -124,7 +124,7 @@ export async function build(options: BuildOptions): Promise<void> {
 
   // Call msixbundle-cli
   console.log('\nCreating MSIX package...');
-  const outDir = path.join(projectRoot, 'target', 'msix');
+  const outDir = path.join(projectRoot, 'src-tauri', 'target', 'msix');
 
   const args = [
     '--out-dir',
