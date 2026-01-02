@@ -227,7 +227,11 @@ function generateExtensions(config: MergedConfig): string {
     }
   }
 
-  return extensions.length > 0 ? extensions.join('\n\n') : '';
+  if (extensions.length === 0) {
+    return '';
+  }
+
+  return `      <Extensions>\n${extensions.join('\n\n')}\n      </Extensions>`;
 }
 
 function generateCapabilities(capabilities: string[]): string {
