@@ -21,6 +21,16 @@ export interface BundleConfig {
     shareTarget?: boolean;
     fileAssociations?: FileAssociation[];
     protocolHandlers?: ProtocolHandler[];
+    startupTask?: StartupTask;
+    contextMenus?: ContextMenu[];
+    backgroundTasks?: BackgroundTask[];
+    appExecutionAliases?: AppExecutionAlias[];
+    appServices?: AppService[];
+    toastActivation?: ToastActivation;
+    autoplayHandlers?: AutoplayHandler[];
+    printTaskSettings?: PrintTaskSettings;
+    thumbnailHandlers?: ThumbnailHandler[];
+    previewHandlers?: PreviewHandler[];
   };
   signing?: {
     pfx?: string | null;
@@ -37,6 +47,57 @@ export interface FileAssociation {
 export interface ProtocolHandler {
   name: string;
   displayName?: string;
+}
+
+export interface StartupTask {
+  enabled: boolean;
+  taskId?: string;
+}
+
+export interface ContextMenu {
+  name: string;
+  fileTypes: string[];
+  displayName?: string;
+}
+
+export interface BackgroundTask {
+  name: string;
+  type: 'timer' | 'systemEvent' | 'pushNotification';
+}
+
+export interface AppExecutionAlias {
+  alias: string;
+  displayName?: string;
+}
+
+export interface AppService {
+  name: string;
+  serverName?: string;
+}
+
+export interface ToastActivation {
+  activationType: 'foreground' | 'background' | 'protocol';
+}
+
+export interface AutoplayHandler {
+  verb: string;
+  actionDisplayName: string;
+  contentEvent?: string;
+  deviceEvent?: string;
+}
+
+export interface PrintTaskSettings {
+  displayName: string;
+}
+
+export interface ThumbnailHandler {
+  clsid: string;
+  fileTypes: string[];
+}
+
+export interface PreviewHandler {
+  clsid: string;
+  fileTypes: string[];
 }
 
 export interface MergedConfig extends BundleConfig {

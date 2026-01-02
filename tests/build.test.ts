@@ -7,11 +7,20 @@ import * as os from 'node:os';
 vi.mock('../src/utils/exec.js', () => ({
   execAsync: vi.fn().mockResolvedValue({ stdout: '', stderr: '' }),
   isMsixbundleCliInstalled: vi.fn().mockResolvedValue(true),
+  getMsixbundleCliVersion: vi.fn().mockResolvedValue('1.0.0'),
+  isVersionSufficient: vi.fn().mockReturnValue(true),
+  MIN_MSIXBUNDLE_CLI_VERSION: '1.0.0',
   promptInstall: vi.fn().mockResolvedValue(false),
 }));
 
 import { build } from '../src/commands/build.js';
-import { execAsync, isMsixbundleCliInstalled, promptInstall } from '../src/utils/exec.js';
+import {
+  execAsync,
+  isMsixbundleCliInstalled,
+  getMsixbundleCliVersion,
+  isVersionSufficient,
+  promptInstall,
+} from '../src/utils/exec.js';
 
 describe('build command', () => {
   let tempDir: string;
@@ -30,6 +39,8 @@ describe('build command', () => {
 
     // Reset mocks
     vi.mocked(isMsixbundleCliInstalled).mockResolvedValue(true);
+    vi.mocked(getMsixbundleCliVersion).mockResolvedValue('1.0.0');
+    vi.mocked(isVersionSufficient).mockReturnValue(true);
     vi.mocked(execAsync).mockResolvedValue({ stdout: '', stderr: '' });
     vi.mocked(promptInstall).mockResolvedValue(false);
   });
@@ -154,6 +165,36 @@ describe('build command', () => {
       'Failed to install msixbundle-cli:',
       expect.any(Error)
     );
+  });
+
+  it('exits when version cannot be determined', async () => {
+    vi.mocked(getMsixbundleCliVersion).mockResolvedValue(null);
+
+    const originalCwd = process.cwd();
+    process.chdir(tempDir);
+
+    await expect(build({})).rejects.toThrow('process.exit called');
+
+    process.chdir(originalCwd);
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Could not determine msixbundle-cli version');
+    expect(processExitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('exits when version is too old', async () => {
+    vi.mocked(getMsixbundleCliVersion).mockResolvedValue('0.5.0');
+    vi.mocked(isVersionSufficient).mockReturnValue(false);
+
+    const originalCwd = process.cwd();
+    process.chdir(tempDir);
+
+    await expect(build({})).rejects.toThrow('process.exit called');
+
+    process.chdir(originalCwd);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'msixbundle-cli version 0.5.0 is too old. Minimum required: 1.0.0'
+    );
+    expect(consoleSpy).toHaveBeenCalledWith('Update with: cargo install msixbundle-cli --force');
+    expect(processExitSpy).toHaveBeenCalledWith(1);
   });
 
   it('builds for x64 architecture by default', async () => {
@@ -285,5 +326,22 @@ describe('build command', () => {
 
     process.chdir(originalCwd);
     expect(execAsync).toHaveBeenCalledWith(expect.stringContaining('--thumbprint'));
+  });
+
+  it('handles msixbundle-cli failure', async () => {
+    createFullProject();
+
+    // Mock: first call (cargo build) succeeds, second call (msixbundle-cli) fails
+    vi.mocked(execAsync)
+      .mockResolvedValueOnce({ stdout: '', stderr: '' }) // cargo build
+      .mockRejectedValueOnce(new Error('msixbundle-cli failed')); // msixbundle-cli
+
+    const originalCwd = process.cwd();
+    process.chdir(tempDir);
+
+    await expect(build({})).rejects.toThrow('process.exit called');
+
+    process.chdir(originalCwd);
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to create MSIX:', expect.any(Error));
   });
 });

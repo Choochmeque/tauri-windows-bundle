@@ -1,0 +1,8 @@
+      <uap:Extension Category="windows.fileTypeAssociation">
+        <uap:FileTypeAssociation Name="{{NAME}}">
+          <uap:SupportedFileTypes>
+{{FILE_TYPES}}
+          </uap:SupportedFileTypes>
+          <desktop2:DesktopPreviewHandler Clsid="{{CLSID}}" />
+        </uap:FileTypeAssociation>
+      </uap:Extension>

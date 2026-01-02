@@ -1,0 +1,9 @@
+      <desktop:Extension Category="windows.fileExplorerContextMenus">
+        <desktop:FileExplorerContextMenus>
+          <desktop:ItemType Type="*">
+            <desktop:Verb Id="{{NAME}}" Clsid="">
+{{FILE_TYPES}}
+            </desktop:Verb>
+          </desktop:ItemType>
+        </desktop:FileExplorerContextMenus>
+      </desktop:Extension>

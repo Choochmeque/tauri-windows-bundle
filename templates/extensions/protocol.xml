@@ -1,0 +1,5 @@
+      <uap:Extension Category="windows.protocol">
+        <uap:Protocol Name="{{NAME}}">
+          <uap:DisplayName>{{DISPLAY_NAME}}</uap:DisplayName>
+        </uap:Protocol>
+      </uap:Extension>

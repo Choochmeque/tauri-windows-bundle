@@ -1,0 +1,3 @@
+      <desktop:Extension Category="windows.printWorkflowBackgroundTask" EntryPoint="Windows.FullTrustApplication">
+        <desktop:PrintWorkflowBackgroundTask />
+      </desktop:Extension>

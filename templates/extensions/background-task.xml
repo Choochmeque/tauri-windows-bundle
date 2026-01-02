@@ -1,0 +1,5 @@
+      <uap:Extension Category="windows.backgroundTasks" EntryPoint="{{ENTRY_POINT}}">
+        <uap:BackgroundTasks>
+          <uap:Task Type="{{TRIGGER_TYPE}}" />
+        </uap:BackgroundTasks>
+      </uap:Extension>

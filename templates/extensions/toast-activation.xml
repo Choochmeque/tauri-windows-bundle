@@ -1,0 +1,3 @@
+      <desktop:Extension Category="windows.toastNotificationActivation">
+        <desktop:ToastNotificationActivation ToastActivatorCLSID="{{CLSID}}" />
+      </desktop:Extension>

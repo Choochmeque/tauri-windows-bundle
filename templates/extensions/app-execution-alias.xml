@@ -1,0 +1,5 @@
+      <uap3:Extension Category="windows.appExecutionAlias" EntryPoint="Windows.FullTrustApplication" Executable="{{EXECUTABLE}}">
+        <uap3:AppExecutionAlias>
+          <desktop:ExecutionAlias Alias="{{ALIAS}}" />
+        </uap3:AppExecutionAlias>
+      </uap3:Extension>

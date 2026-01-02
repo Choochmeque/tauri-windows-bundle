@@ -185,4 +185,31 @@ describe('prepareAppxContent', () => {
 
     expect(fs.existsSync(path.join(result, 'static', 'images', 'logo.png'))).toBe(true);
   });
+
+  it('copies directory resources using string pattern (glob)', () => {
+    const buildDir = path.join(tempDir, 'target', 'x86_64-pc-windows-msvc', 'release');
+    fs.mkdirSync(buildDir, { recursive: true });
+    fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
+
+    const srcTauri = path.join(tempDir, 'src-tauri');
+    fs.mkdirSync(path.join(srcTauri, 'static', 'subdir'), { recursive: true });
+    fs.writeFileSync(path.join(srcTauri, 'static', 'subdir', 'file.txt'), 'content');
+
+    const configWithResources: TauriConfig = {
+      ...mockTauriConfig,
+      bundle: {
+        resources: ['static'],
+      },
+    };
+
+    const result = prepareAppxContent(
+      tempDir,
+      'x64',
+      mockConfig,
+      configWithResources,
+      '10.0.17763.0'
+    );
+
+    expect(fs.existsSync(path.join(result, 'static', 'subdir', 'file.txt'))).toBe(true);
+  });
 });

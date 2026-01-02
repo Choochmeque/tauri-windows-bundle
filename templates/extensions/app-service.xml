@@ -1,0 +1,3 @@
+      <uap:Extension Category="windows.appService">
+        <uap:AppService Name="{{NAME}}" />
+      </uap:Extension>

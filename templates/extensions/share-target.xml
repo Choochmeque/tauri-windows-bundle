@@ -1,0 +1,9 @@
+      <uap:Extension Category="windows.shareTarget">
+        <uap:ShareTarget>
+          <uap:SupportedFileTypes>
+            <uap:SupportsAnyFileType />
+          </uap:SupportedFileTypes>
+          <uap:DataFormat>Text</uap:DataFormat>
+          <uap:DataFormat>Uri</uap:DataFormat>
+        </uap:ShareTarget>
+      </uap:Extension>

@@ -1,0 +1,5 @@
+      <uap:Extension Category="windows.autoPlayContent">
+        <uap:AutoPlayContent>
+          <uap:LaunchAction Verb="{{VERB}}" ActionDisplayName="{{ACTION_DISPLAY_NAME}}" ContentEvent="{{CONTENT_EVENT}}" />
+        </uap:AutoPlayContent>
+      </uap:Extension>

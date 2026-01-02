@@ -1,0 +1,5 @@
+      <uap:Extension Category="windows.autoPlayDevice">
+        <uap:AutoPlayDevice>
+          <uap:LaunchAction Verb="{{VERB}}" ActionDisplayName="{{ACTION_DISPLAY_NAME}}" DeviceEvent="{{DEVICE_EVENT}}" />
+        </uap:AutoPlayDevice>
+      </uap:Extension>

@@ -26,7 +26,14 @@ vi.mock('node:readline', () => {
 });
 
 // Import after mocks
-import { execAsync, isMsixbundleCliInstalled, promptInstall } from '../src/utils/exec.js';
+import {
+  execAsync,
+  isMsixbundleCliInstalled,
+  getMsixbundleCliVersion,
+  isVersionSufficient,
+  MIN_MSIXBUNDLE_CLI_VERSION,
+  promptInstall,
+} from '../src/utils/exec.js';
 import * as childProcess from 'node:child_process';
 import * as readline from 'node:readline';
 
@@ -157,5 +164,96 @@ describe('promptInstall', () => {
 
     await promptInstall('Custom message');
     expect(mockQuestion).toHaveBeenCalled();
+  });
+});
+
+describe('getMsixbundleCliVersion', () => {
+  beforeEach(() => {
+    mockExec.mockReset();
+  });
+
+  it('returns version from "msixbundle-cli X.X.X" format', async () => {
+    mockExec.mockImplementation((_cmd: string, _opts: unknown, callback: ExecCallback) => {
+      callback(null, { stdout: 'msixbundle-cli 1.2.3', stderr: '' });
+    });
+
+    const result = await getMsixbundleCliVersion();
+    expect(result).toBe('1.2.3');
+  });
+
+  it('returns version from plain "X.X.X" format', async () => {
+    mockExec.mockImplementation((_cmd: string, _opts: unknown, callback: ExecCallback) => {
+      callback(null, { stdout: '2.0.0', stderr: '' });
+    });
+
+    const result = await getMsixbundleCliVersion();
+    expect(result).toBe('2.0.0');
+  });
+
+  it('returns version with whitespace trimmed', async () => {
+    mockExec.mockImplementation((_cmd: string, _opts: unknown, callback: ExecCallback) => {
+      callback(null, { stdout: '  1.0.0\n', stderr: '' });
+    });
+
+    const result = await getMsixbundleCliVersion();
+    expect(result).toBe('1.0.0');
+  });
+
+  it('returns null when version cannot be parsed', async () => {
+    mockExec.mockImplementation((_cmd: string, _opts: unknown, callback: ExecCallback) => {
+      callback(null, { stdout: 'unknown version', stderr: '' });
+    });
+
+    const result = await getMsixbundleCliVersion();
+    expect(result).toBeNull();
+  });
+
+  it('returns null when command fails', async () => {
+    mockExec.mockImplementation((_cmd: string, _opts: unknown, callback: ExecCallback) => {
+      callback(new Error('command not found'), { stdout: '', stderr: '' });
+    });
+
+    const result = await getMsixbundleCliVersion();
+    expect(result).toBeNull();
+  });
+});
+
+describe('isVersionSufficient', () => {
+  it('returns true when major is greater', () => {
+    expect(isVersionSufficient('2.0.0', '1.0.0')).toBe(true);
+    expect(isVersionSufficient('3.0.0', '1.5.0')).toBe(true);
+  });
+
+  it('returns false when major is less', () => {
+    expect(isVersionSufficient('0.9.0', '1.0.0')).toBe(false);
+    expect(isVersionSufficient('1.0.0', '2.0.0')).toBe(false);
+  });
+
+  it('returns true when minor is greater (same major)', () => {
+    expect(isVersionSufficient('1.2.0', '1.1.0')).toBe(true);
+    expect(isVersionSufficient('1.5.0', '1.0.0')).toBe(true);
+  });
+
+  it('returns false when minor is less (same major)', () => {
+    expect(isVersionSufficient('1.0.0', '1.1.0')).toBe(false);
+    expect(isVersionSufficient('1.4.0', '1.5.0')).toBe(false);
+  });
+
+  it('returns true when patch is greater or equal (same major.minor)', () => {
+    expect(isVersionSufficient('1.0.1', '1.0.0')).toBe(true);
+    expect(isVersionSufficient('1.0.5', '1.0.3')).toBe(true);
+    expect(isVersionSufficient('1.0.0', '1.0.0')).toBe(true);
+  });
+
+  it('returns false when patch is less (same major.minor)', () => {
+    expect(isVersionSufficient('1.0.0', '1.0.1')).toBe(false);
+    expect(isVersionSufficient('1.0.2', '1.0.5')).toBe(false);
+  });
+
+  it('works with MIN_MSIXBUNDLE_CLI_VERSION constant', () => {
+    expect(MIN_MSIXBUNDLE_CLI_VERSION).toBe('1.0.0');
+    expect(isVersionSufficient('1.0.0', MIN_MSIXBUNDLE_CLI_VERSION)).toBe(true);
+    expect(isVersionSufficient('0.9.9', MIN_MSIXBUNDLE_CLI_VERSION)).toBe(false);
+    expect(isVersionSufficient('1.1.0', MIN_MSIXBUNDLE_CLI_VERSION)).toBe(true);
   });
 });

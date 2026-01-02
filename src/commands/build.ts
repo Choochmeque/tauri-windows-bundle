@@ -9,7 +9,14 @@ import {
   toFourPartVersion,
 } from '../core/project-discovery.js';
 import { prepareAppxContent } from '../core/appx-content.js';
-import { execAsync, isMsixbundleCliInstalled, promptInstall } from '../utils/exec.js';
+import {
+  execAsync,
+  isMsixbundleCliInstalled,
+  getMsixbundleCliVersion,
+  isVersionSufficient,
+  MIN_MSIXBUNDLE_CLI_VERSION,
+  promptInstall,
+} from '../utils/exec.js';
 
 export async function build(options: BuildOptions): Promise<void> {
   console.log('Building MSIX package...\n');
@@ -36,6 +43,21 @@ export async function build(options: BuildOptions): Promise<void> {
       console.log('Or from: https://github.com/Choochmeque/msixbundle-rs');
       process.exit(1);
     }
+  }
+
+  // Check msixbundle-cli version
+  const version = await getMsixbundleCliVersion();
+  if (!version) {
+    console.error('Could not determine msixbundle-cli version');
+    process.exit(1);
+  }
+
+  if (!isVersionSufficient(version, MIN_MSIXBUNDLE_CLI_VERSION)) {
+    console.error(
+      `msixbundle-cli version ${version} is too old. Minimum required: ${MIN_MSIXBUNDLE_CLI_VERSION}`
+    );
+    console.log('Update with: cargo install msixbundle-cli --force');
+    process.exit(1);
   }
 
   const projectRoot = findProjectRoot();
