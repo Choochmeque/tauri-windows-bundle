@@ -48,7 +48,8 @@
     "msvc",
     "rustup",
     "archs",
-    "rescap"
+    "rescap",
+    "dtolnay"
   ],
   "useGitignore": true,
   "ignorePaths": [
