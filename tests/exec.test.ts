@@ -258,10 +258,10 @@ describe('isVersionSufficient', () => {
   });
 
   it('works with MIN_MSIXBUNDLE_CLI_VERSION constant', () => {
-    expect(MIN_MSIXBUNDLE_CLI_VERSION).toBe('1.0.2');
-    expect(isVersionSufficient('1.0.2', MIN_MSIXBUNDLE_CLI_VERSION)).toBe(true);
-    expect(isVersionSufficient('1.0.1', MIN_MSIXBUNDLE_CLI_VERSION)).toBe(false);
+    expect(MIN_MSIXBUNDLE_CLI_VERSION).toBe('1.1.0');
     expect(isVersionSufficient('1.1.0', MIN_MSIXBUNDLE_CLI_VERSION)).toBe(true);
+    expect(isVersionSufficient('1.0.2', MIN_MSIXBUNDLE_CLI_VERSION)).toBe(false);
+    expect(isVersionSufficient('1.2.0', MIN_MSIXBUNDLE_CLI_VERSION)).toBe(true);
   });
 });
 
