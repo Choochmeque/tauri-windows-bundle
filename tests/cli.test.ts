@@ -11,22 +11,32 @@ vi.mock('commander', () => {
   const createMockCommand = (path: string[] = []): Record<string, unknown> => {
     const mock: Record<string, unknown> = {};
 
-    mock.name = vi.fn(() => mock);
-    mock.description = vi.fn(() => mock);
-    mock.version = vi.fn((v: string) => {
+    mock.name = vi.fn(function () {
+      return mock;
+    });
+    mock.description = vi.fn(function () {
+      return mock;
+    });
+    mock.version = vi.fn(function (v: string) {
       capturedVersion = v;
       return mock;
     });
-    mock.option = vi.fn(() => mock);
-    mock.parse = vi.fn(() => mock);
-    mock.argument = vi.fn(() => mock);
+    mock.option = vi.fn(function () {
+      return mock;
+    });
+    mock.parse = vi.fn(function () {
+      return mock;
+    });
+    mock.argument = vi.fn(function () {
+      return mock;
+    });
 
-    mock.command = vi.fn((name: string) => {
+    mock.command = vi.fn(function (name: string) {
       currentCommandPath = [...path, name];
       return createMockCommand(currentCommandPath);
     });
 
-    mock.action = vi.fn((handler: ActionHandler) => {
+    mock.action = vi.fn(function (handler: ActionHandler) {
       const key = currentCommandPath.join(':');
       actionHandlers[key] = handler;
       return mock;
@@ -36,48 +46,92 @@ vi.mock('commander', () => {
   };
 
   return {
-    Command: vi.fn(() => createMockCommand()),
+    Command: vi.fn(function () {
+      return createMockCommand();
+    }),
   };
 });
 
 // Mock the commands
 vi.mock('../src/commands/init.js', () => ({
-  init: vi.fn().mockResolvedValue(undefined),
+  init: vi.fn(async function () {
+    return undefined;
+  }),
 }));
 
 vi.mock('../src/commands/build.js', () => ({
-  build: vi.fn().mockResolvedValue(undefined),
+  build: vi.fn(async function () {
+    return undefined;
+  }),
 }));
 
 vi.mock('../src/commands/extension.js', () => ({
-  extensionList: vi.fn().mockResolvedValue(undefined),
-  extensionAddFileAssociation: vi.fn().mockResolvedValue(undefined),
-  extensionAddProtocol: vi.fn().mockResolvedValue(undefined),
-  extensionEnableShareTarget: vi.fn().mockResolvedValue(undefined),
-  extensionDisableShareTarget: vi.fn().mockResolvedValue(undefined),
-  extensionEnableStartupTask: vi.fn().mockResolvedValue(undefined),
-  extensionDisableStartupTask: vi.fn().mockResolvedValue(undefined),
-  extensionAddContextMenu: vi.fn().mockResolvedValue(undefined),
-  extensionAddBackgroundTask: vi.fn().mockResolvedValue(undefined),
-  extensionAddAppExecutionAlias: vi.fn().mockResolvedValue(undefined),
-  extensionAddAppService: vi.fn().mockResolvedValue(undefined),
-  extensionEnableToastActivation: vi.fn().mockResolvedValue(undefined),
-  extensionDisableToastActivation: vi.fn().mockResolvedValue(undefined),
-  extensionAddAutoplay: vi.fn().mockResolvedValue(undefined),
-  extensionEnablePrintTaskSettings: vi.fn().mockResolvedValue(undefined),
-  extensionDisablePrintTaskSettings: vi.fn().mockResolvedValue(undefined),
-  extensionAddThumbnailHandler: vi.fn().mockResolvedValue(undefined),
-  extensionAddPreviewHandler: vi.fn().mockResolvedValue(undefined),
-  extensionRemove: vi.fn().mockResolvedValue(undefined),
+  extensionList: vi.fn(async function () {
+    return undefined;
+  }),
+  extensionAddFileAssociation: vi.fn(async function () {
+    return undefined;
+  }),
+  extensionAddProtocol: vi.fn(async function () {
+    return undefined;
+  }),
+  extensionEnableShareTarget: vi.fn(async function () {
+    return undefined;
+  }),
+  extensionDisableShareTarget: vi.fn(async function () {
+    return undefined;
+  }),
+  extensionEnableStartupTask: vi.fn(async function () {
+    return undefined;
+  }),
+  extensionDisableStartupTask: vi.fn(async function () {
+    return undefined;
+  }),
+  extensionAddContextMenu: vi.fn(async function () {
+    return undefined;
+  }),
+  extensionAddBackgroundTask: vi.fn(async function () {
+    return undefined;
+  }),
+  extensionAddAppExecutionAlias: vi.fn(async function () {
+    return undefined;
+  }),
+  extensionAddAppService: vi.fn(async function () {
+    return undefined;
+  }),
+  extensionEnableToastActivation: vi.fn(async function () {
+    return undefined;
+  }),
+  extensionDisableToastActivation: vi.fn(async function () {
+    return undefined;
+  }),
+  extensionAddAutoplay: vi.fn(async function () {
+    return undefined;
+  }),
+  extensionEnablePrintTaskSettings: vi.fn(async function () {
+    return undefined;
+  }),
+  extensionDisablePrintTaskSettings: vi.fn(async function () {
+    return undefined;
+  }),
+  extensionAddThumbnailHandler: vi.fn(async function () {
+    return undefined;
+  }),
+  extensionAddPreviewHandler: vi.fn(async function () {
+    return undefined;
+  }),
+  extensionRemove: vi.fn(async function () {
+    return undefined;
+  }),
 }));
 
 describe('cli', () => {
   beforeEach(async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(process, 'exit').mockImplementation(() => {
+    vi.spyOn(console, 'error').mockImplementation(function () {});
+    vi.spyOn(console, 'log').mockImplementation(function () {});
+    vi.spyOn(process, 'exit').mockImplementation(function () {
       throw new Error('process.exit called');
-    });
+    } as () => never);
 
     // Reset action handlers
     Object.keys(actionHandlers).forEach((key) => delete actionHandlers[key]);
