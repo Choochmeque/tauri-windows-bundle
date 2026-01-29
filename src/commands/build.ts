@@ -7,6 +7,7 @@ import {
   readTauriWindowsConfig,
   readBundleConfig,
   getWindowsDir,
+  resolveVersion,
   toFourPartVersion,
 } from '../core/project-discovery.js';
 import { jsonMergePatch } from '../utils/merge.js';
@@ -90,7 +91,9 @@ export async function build(options: BuildOptions): Promise<void> {
   // Merge config
   const config: MergedConfig = {
     displayName: tauriConfig.productName || 'App',
-    version: toFourPartVersion(tauriConfig.version || '1.0.0'),
+    version: toFourPartVersion(
+      resolveVersion(tauriConfig.version || '1.0.0', path.join(projectRoot, 'src-tauri'))
+    ),
     description: tauriConfig.bundle?.shortDescription || '',
     identifier: tauriConfig.identifier || 'com.example.app',
     ...bundleConfig,

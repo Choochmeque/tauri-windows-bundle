@@ -84,6 +84,26 @@ export function getWindowsDir(projectRoot: string): string {
   return path.join(projectRoot, 'src-tauri', 'gen', 'windows');
 }
 
+export function resolveVersion(version: string, tauriConfigDir: string): string {
+  const resolvedPath = path.resolve(tauriConfigDir, version);
+  if (fs.existsSync(resolvedPath) && fs.statSync(resolvedPath).isFile()) {
+    try {
+      const content = fs.readFileSync(resolvedPath, 'utf-8');
+      const json = JSON.parse(content);
+      if (!json.version || typeof json.version !== 'string') {
+        throw new Error(`File ${version} does not contain a valid "version" field`);
+      }
+      return json.version;
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        throw new Error(`Failed to parse ${version} as JSON: ${error.message}`);
+      }
+      throw error;
+    }
+  }
+  return version;
+}
+
 export function toFourPartVersion(version: string): string {
   const parts = version.split('.');
   while (parts.length < 4) parts.push('0');
