@@ -15,6 +15,7 @@ vi.mock('../src/utils/exec.js', () => ({
 }));
 
 import { build } from '../src/commands/build.js';
+import { generateManifestTemplate } from '../src/core/manifest.js';
 import {
   execAsync,
   execWithProgress,
@@ -72,6 +73,7 @@ describe('build command', () => {
     // Create windows bundle config
     const windowsDir = path.join(srcTauri, 'gen', 'windows');
     fs.mkdirSync(windowsDir, { recursive: true });
+    generateManifestTemplate(windowsDir);
     fs.writeFileSync(
       path.join(windowsDir, 'bundle.config.json'),
       JSON.stringify({
@@ -80,6 +82,9 @@ describe('build command', () => {
         capabilities: { general: ['internetClient'] },
       })
     );
+
+    // Create AppxManifest.xml.template
+    generateManifestTemplate(windowsDir);
 
     // Create build output
     const buildDir = path.join(tempDir, 'src-tauri', 'target', 'x86_64-pc-windows-msvc', 'release');
@@ -523,6 +528,7 @@ describe('build command', () => {
 
     const windowsDir = path.join(srcTauri, 'gen', 'windows');
     fs.mkdirSync(windowsDir, { recursive: true });
+    generateManifestTemplate(windowsDir);
     fs.writeFileSync(
       path.join(windowsDir, 'bundle.config.json'),
       JSON.stringify({
@@ -568,6 +574,7 @@ describe('build command', () => {
 
     const windowsDir = path.join(srcTauri, 'gen', 'windows');
     fs.mkdirSync(windowsDir, { recursive: true });
+    generateManifestTemplate(windowsDir);
     fs.writeFileSync(
       path.join(windowsDir, 'bundle.config.json'),
       JSON.stringify({
@@ -614,6 +621,7 @@ describe('build command', () => {
 
     const windowsDir = path.join(srcTauri, 'gen', 'windows');
     fs.mkdirSync(windowsDir, { recursive: true });
+    generateManifestTemplate(windowsDir);
     fs.writeFileSync(
       path.join(windowsDir, 'bundle.config.json'),
       JSON.stringify({
@@ -652,6 +660,7 @@ describe('build command', () => {
 
     const windowsDir = path.join(srcTauri, 'gen', 'windows');
     fs.mkdirSync(windowsDir, { recursive: true });
+    generateManifestTemplate(windowsDir);
     fs.writeFileSync(
       path.join(windowsDir, 'bundle.config.json'),
       JSON.stringify({

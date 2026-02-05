@@ -9,7 +9,8 @@ export function prepareAppxContent(
   arch: string,
   config: MergedConfig,
   tauriConfig: TauriConfig,
-  minVersion: string
+  minVersion: string,
+  windowsDir: string
 ): string {
   const target = arch === 'x64' ? 'x86_64-pc-windows-msvc' : 'aarch64-pc-windows-msvc';
   const srcTauriDir = path.join(projectRoot, 'src-tauri');
@@ -30,7 +31,7 @@ export function prepareAppxContent(
   fs.copyFileSync(srcExe, path.join(appxDir, exeName));
 
   // Generate AppxManifest.xml
-  const manifest = generateManifest(config, arch, minVersion);
+  const manifest = generateManifest(config, arch, minVersion, windowsDir);
   fs.writeFileSync(path.join(appxDir, 'AppxManifest.xml'), manifest);
 
   // Copy MSIX Assets

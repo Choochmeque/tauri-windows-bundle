@@ -38,7 +38,6 @@ describe('init command', () => {
     const windowsDir = path.join(tempDir, 'src-tauri', 'gen', 'windows');
     expect(fs.existsSync(windowsDir)).toBe(true);
     expect(fs.existsSync(path.join(windowsDir, 'Assets'))).toBe(true);
-    expect(fs.existsSync(path.join(windowsDir, 'extensions'))).toBe(true);
   });
 
   it('creates bundle.config.json', async () => {

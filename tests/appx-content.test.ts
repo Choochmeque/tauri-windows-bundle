@@ -3,10 +3,12 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { prepareAppxContent } from '../src/core/appx-content.js';
+import { generateManifestTemplate } from '../src/core/manifest.js';
 import type { MergedConfig, TauriConfig } from '../src/types.js';
 
 describe('prepareAppxContent', () => {
   let tempDir: string;
+  let windowsDir: string;
 
   const mockConfig: MergedConfig = {
     displayName: 'TestApp',
@@ -25,6 +27,10 @@ describe('prepareAppxContent', () => {
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tauri-bundle-test-'));
+    // Create windowsDir and seed it with the bundled template
+    windowsDir = path.join(tempDir, 'src-tauri', 'gen', 'windows');
+    fs.mkdirSync(windowsDir, { recursive: true });
+    generateManifestTemplate(windowsDir);
   });
 
   afterEach(() => {
@@ -37,7 +43,14 @@ describe('prepareAppxContent', () => {
     fs.mkdirSync(buildDir, { recursive: true });
     fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
 
-    const result = prepareAppxContent(tempDir, 'x64', mockConfig, mockTauriConfig, '10.0.17763.0');
+    const result = prepareAppxContent(
+      tempDir,
+      'x64',
+      mockConfig,
+      mockTauriConfig,
+      '10.0.17763.0',
+      windowsDir
+    );
 
     expect(fs.existsSync(result)).toBe(true);
     expect(fs.existsSync(path.join(result, 'Assets'))).toBe(true);
@@ -48,7 +61,14 @@ describe('prepareAppxContent', () => {
     fs.mkdirSync(buildDir, { recursive: true });
     fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe content');
 
-    const result = prepareAppxContent(tempDir, 'x64', mockConfig, mockTauriConfig, '10.0.17763.0');
+    const result = prepareAppxContent(
+      tempDir,
+      'x64',
+      mockConfig,
+      mockTauriConfig,
+      '10.0.17763.0',
+      windowsDir
+    );
 
     expect(fs.existsSync(path.join(result, 'TestApp.exe'))).toBe(true);
   });
@@ -58,7 +78,14 @@ describe('prepareAppxContent', () => {
     fs.mkdirSync(buildDir, { recursive: true });
     fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
 
-    const result = prepareAppxContent(tempDir, 'x64', mockConfig, mockTauriConfig, '10.0.17763.0');
+    const result = prepareAppxContent(
+      tempDir,
+      'x64',
+      mockConfig,
+      mockTauriConfig,
+      '10.0.17763.0',
+      windowsDir
+    );
 
     const manifestPath = path.join(result, 'AppxManifest.xml');
     expect(fs.existsSync(manifestPath)).toBe(true);
@@ -70,7 +97,7 @@ describe('prepareAppxContent', () => {
 
   it('throws error when executable not found', () => {
     expect(() =>
-      prepareAppxContent(tempDir, 'x64', mockConfig, mockTauriConfig, '10.0.17763.0')
+      prepareAppxContent(tempDir, 'x64', mockConfig, mockTauriConfig, '10.0.17763.0', windowsDir)
     ).toThrow('Executable not found');
   });
 
@@ -90,7 +117,8 @@ describe('prepareAppxContent', () => {
       'arm64',
       mockConfig,
       mockTauriConfig,
-      '10.0.17763.0'
+      '10.0.17763.0',
+      windowsDir
     );
 
     expect(result).toContain('arm64');
@@ -102,11 +130,18 @@ describe('prepareAppxContent', () => {
     fs.mkdirSync(buildDir, { recursive: true });
     fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
 
-    const assetsDir = path.join(tempDir, 'src-tauri', 'gen', 'windows', 'Assets');
+    const assetsDir = path.join(windowsDir, 'Assets');
     fs.mkdirSync(assetsDir, { recursive: true });
     fs.writeFileSync(path.join(assetsDir, 'icon.png'), 'mock icon');
 
-    const result = prepareAppxContent(tempDir, 'x64', mockConfig, mockTauriConfig, '10.0.17763.0');
+    const result = prepareAppxContent(
+      tempDir,
+      'x64',
+      mockConfig,
+      mockTauriConfig,
+      '10.0.17763.0',
+      windowsDir
+    );
 
     expect(fs.existsSync(path.join(result, 'Assets', 'icon.png'))).toBe(true);
   });
@@ -132,7 +167,8 @@ describe('prepareAppxContent', () => {
       'x64',
       mockConfig,
       configWithResources,
-      '10.0.17763.0'
+      '10.0.17763.0',
+      windowsDir
     );
 
     expect(fs.existsSync(path.join(result, 'assets', 'data.txt'))).toBe(true);
@@ -159,7 +195,8 @@ describe('prepareAppxContent', () => {
       'x64',
       mockConfig,
       configWithResources,
-      '10.0.17763.0'
+      '10.0.17763.0',
+      windowsDir
     );
 
     expect(fs.existsSync(path.join(result, 'resources', 'config.json'))).toBe(true);
@@ -186,7 +223,8 @@ describe('prepareAppxContent', () => {
       'x64',
       mockConfig,
       configWithResources,
-      '10.0.17763.0'
+      '10.0.17763.0',
+      windowsDir
     );
 
     expect(fs.existsSync(path.join(result, 'static', 'images', 'logo.png'))).toBe(true);
@@ -213,9 +251,45 @@ describe('prepareAppxContent', () => {
       'x64',
       mockConfig,
       configWithResources,
-      '10.0.17763.0'
+      '10.0.17763.0',
+      windowsDir
     );
 
     expect(fs.existsSync(path.join(result, 'static', 'subdir', 'file.txt'))).toBe(true);
+  });
+
+  it('uses custom local template when present in windowsDir', () => {
+    const buildDir = path.join(tempDir, 'src-tauri', 'target', 'x86_64-pc-windows-msvc', 'release');
+    fs.mkdirSync(buildDir, { recursive: true });
+    fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
+
+    // Write a custom template
+    const customTemplate = `<?xml version="1.0"?>
+<Package>
+  <!-- CUSTOM_APPX_MARKER -->
+  <Identity Name="{{PACKAGE_NAME}}" Publisher="{{PUBLISHER}}" Version="{{VERSION}}" ProcessorArchitecture="{{ARCH}}" />
+  <DisplayName>{{DISPLAY_NAME}}</DisplayName>
+  <PublisherDisplayName>{{PUBLISHER_DISPLAY_NAME}}</PublisherDisplayName>
+  <MinVersion>{{MIN_VERSION}}</MinVersion>
+  <Executable>{{EXECUTABLE}}</Executable>
+  <Description>{{DESCRIPTION}}</Description>
+{{EXTENSIONS}}
+{{CAPABILITIES}}
+</Package>`;
+    fs.writeFileSync(path.join(windowsDir, 'AppxManifest.xml.template'), customTemplate);
+
+    const result = prepareAppxContent(
+      tempDir,
+      'x64',
+      mockConfig,
+      mockTauriConfig,
+      '10.0.17763.0',
+      windowsDir
+    );
+
+    const manifestContent = fs.readFileSync(path.join(result, 'AppxManifest.xml'), 'utf-8');
+    expect(manifestContent).toContain('<!-- CUSTOM_APPX_MARKER -->');
+    expect(manifestContent).toContain('TestApp');
+    expect(manifestContent).not.toContain('{{');
   });
 });

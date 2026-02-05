@@ -1,8 +1,13 @@
-import { describe, it, expect } from 'vitest';
-import { generateManifest } from '../src/core/manifest.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as os from 'node:os';
+import { generateManifest, generateManifestTemplate } from '../src/core/manifest.js';
 import type { MergedConfig } from '../src/types.js';
 
 describe('generateManifest', () => {
+  let tempDir: string;
+
   const mockConfig: MergedConfig = {
     displayName: 'Test App',
     version: '1.0.0.0',
@@ -13,8 +18,18 @@ describe('generateManifest', () => {
     capabilities: { general: ['internetClient'] },
   };
 
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tauri-bundle-test-'));
+    // Seed the temp dir with the bundled template (simulates what init does)
+    generateManifestTemplate(tempDir);
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
   it('replaces all template variables', () => {
-    const manifest = generateManifest(mockConfig, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(mockConfig, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).not.toContain('{{');
     expect(manifest).toContain('Test App');
@@ -23,17 +38,17 @@ describe('generateManifest', () => {
   });
 
   it('preserves dots in package name from identifier', () => {
-    const manifest = generateManifest(mockConfig, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(mockConfig, 'x64', '10.0.17763.0', tempDir);
     expect(manifest).toContain('Name="com.example.testapp"');
   });
 
   it('generates manifest with correct arch', () => {
-    const manifest = generateManifest(mockConfig, 'arm64', '10.0.17763.0');
+    const manifest = generateManifest(mockConfig, 'arm64', '10.0.17763.0', tempDir);
     expect(manifest).toContain('ProcessorArchitecture="arm64"');
   });
 
   it('generates manifest with x64 arch', () => {
-    const manifest = generateManifest(mockConfig, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(mockConfig, 'x64', '10.0.17763.0', tempDir);
     expect(manifest).toContain('ProcessorArchitecture="x64"');
   });
 
@@ -46,7 +61,7 @@ describe('generateManifest', () => {
         restricted: ['broadFileSystemAccess'],
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('<Capability Name="internetClient"');
     expect(manifest).toContain('<DeviceCapability Name="webcam"');
@@ -54,7 +69,7 @@ describe('generateManifest', () => {
   });
 
   it('always includes runFullTrust restricted capability', () => {
-    const manifest = generateManifest(mockConfig, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(mockConfig, 'x64', '10.0.17763.0', tempDir);
     expect(manifest).toContain('<rescap:Capability Name="runFullTrust"');
   });
 
@@ -65,7 +80,7 @@ describe('generateManifest', () => {
         shareTarget: true,
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('windows.shareTarget');
     expect(manifest).toContain('<uap:ShareTarget>');
@@ -78,7 +93,7 @@ describe('generateManifest', () => {
         protocolHandlers: [{ name: 'myapp', displayName: 'My App Protocol' }],
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('windows.protocol');
     expect(manifest).toContain('<uap:Protocol Name="myapp"');
@@ -92,7 +107,7 @@ describe('generateManifest', () => {
         fileAssociations: [{ name: 'myfiles', extensions: ['.myf', '.myx'] }],
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('windows.fileTypeAssociation');
     expect(manifest).toContain('<uap:FileType>.myf</uap:FileType>');
@@ -106,7 +121,7 @@ describe('generateManifest', () => {
         startupTask: { enabled: true },
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('windows.startupTask');
     expect(manifest).toContain('<desktop:StartupTask');
@@ -121,7 +136,7 @@ describe('generateManifest', () => {
         startupTask: { enabled: true, taskId: 'CustomTask' },
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('TaskId="CustomTask"');
   });
@@ -133,7 +148,7 @@ describe('generateManifest', () => {
         startupTask: { enabled: false },
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).not.toContain('windows.startupTask');
   });
@@ -145,7 +160,7 @@ describe('generateManifest', () => {
         contextMenus: [{ name: 'open-with', fileTypes: ['*', '.txt'] }],
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('windows.fileExplorerContextMenus');
     expect(manifest).toContain('<desktop:Verb Id="open-with"');
@@ -160,7 +175,7 @@ describe('generateManifest', () => {
         backgroundTasks: [{ name: 'sync-task', type: 'timer' }],
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('windows.backgroundTasks');
     expect(manifest).toContain('EntryPoint="sync-task"');
@@ -174,7 +189,7 @@ describe('generateManifest', () => {
         backgroundTasks: [{ name: 'event-task', type: 'systemEvent' }],
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('<uap:Task Type="SystemTrigger"');
   });
@@ -186,7 +201,7 @@ describe('generateManifest', () => {
         backgroundTasks: [{ name: 'push-task', type: 'pushNotification' }],
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('<uap:Task Type="PushNotificationTrigger"');
   });
@@ -198,7 +213,7 @@ describe('generateManifest', () => {
         appExecutionAliases: [{ alias: 'myapp' }],
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('windows.appExecutionAlias');
     expect(manifest).toContain('Alias="myapp.exe"');
@@ -211,7 +226,7 @@ describe('generateManifest', () => {
         appExecutionAliases: [{ alias: 'myapp.exe' }],
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('Alias="myapp.exe"');
   });
@@ -223,7 +238,7 @@ describe('generateManifest', () => {
         appServices: [{ name: 'com.myapp.service' }],
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('windows.appService');
     expect(manifest).toContain('Name="com.myapp.service"');
@@ -236,7 +251,7 @@ describe('generateManifest', () => {
         toastActivation: { activationType: 'foreground' },
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('windows.toastNotificationActivation');
     expect(manifest).toContain('ToastActivatorCLSID=');
@@ -251,7 +266,7 @@ describe('generateManifest', () => {
         ],
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('windows.autoPlayContent');
     expect(manifest).toContain('Verb="open"');
@@ -268,7 +283,7 @@ describe('generateManifest', () => {
         ],
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('windows.autoPlayDevice');
     expect(manifest).toContain('Verb="import"');
@@ -282,7 +297,7 @@ describe('generateManifest', () => {
         printTaskSettings: { displayName: 'Print Settings' },
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('windows.printWorkflowBackgroundTask');
   });
@@ -296,7 +311,7 @@ describe('generateManifest', () => {
         ],
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('ThumbnailHandler');
     expect(manifest).toContain('Clsid="{12345678-1234-1234-1234-123456789012}"');
@@ -312,11 +327,46 @@ describe('generateManifest', () => {
         ],
       },
     };
-    const manifest = generateManifest(config, 'x64', '10.0.17763.0');
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
     expect(manifest).toContain('DesktopPreviewHandler');
     expect(manifest).toContain('Clsid="{ABCDEF12-1234-1234-1234-123456789012}"');
     expect(manifest).toContain('<uap:FileType>.doc</uap:FileType>');
     expect(manifest).toContain('<uap:FileType>.docx</uap:FileType>');
+  });
+
+  it('uses custom local template when present', () => {
+    const customTemplate = `<?xml version="1.0"?>
+<Package>
+  <!-- CUSTOM_TEMPLATE_MARKER -->
+  <Identity Name="{{PACKAGE_NAME}}" Publisher="{{PUBLISHER}}" Version="{{VERSION}}" ProcessorArchitecture="{{ARCH}}" />
+  <DisplayName>{{DISPLAY_NAME}}</DisplayName>
+  <PublisherDisplayName>{{PUBLISHER_DISPLAY_NAME}}</PublisherDisplayName>
+  <MinVersion>{{MIN_VERSION}}</MinVersion>
+  <Executable>{{EXECUTABLE}}</Executable>
+  <Description>{{DESCRIPTION}}</Description>
+{{EXTENSIONS}}
+{{CAPABILITIES}}
+</Package>`;
+    fs.writeFileSync(path.join(tempDir, 'AppxManifest.xml.template'), customTemplate);
+
+    const manifest = generateManifest(mockConfig, 'x64', '10.0.17763.0', tempDir);
+
+    expect(manifest).toContain('<!-- CUSTOM_TEMPLATE_MARKER -->');
+    expect(manifest).not.toContain('{{');
+    expect(manifest).toContain('Test App');
+    expect(manifest).toContain('CN=TestCompany');
+  });
+
+  it('throws when local template is missing', () => {
+    const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tauri-bundle-test-empty-'));
+
+    try {
+      expect(() => generateManifest(mockConfig, 'x64', '10.0.17763.0', emptyDir)).toThrow(
+        "Run 'tauri-windows-bundle init' first"
+      );
+    } finally {
+      fs.rmSync(emptyDir, { recursive: true, force: true });
+    }
   });
 });

@@ -32,8 +32,14 @@ function loadTemplate(templatePath: string): string {
   return fs.readFileSync(templatePath, 'utf-8');
 }
 
-function getManifestTemplate(): string {
-  return loadTemplate(path.join(TEMPLATES_DIR, 'AppxManifest.xml.template'));
+function getManifestTemplate(windowsDir: string): string {
+  const localPath = path.join(windowsDir, 'AppxManifest.xml.template');
+  if (!fs.existsSync(localPath)) {
+    throw new Error(
+      `AppxManifest.xml.template not found at ${localPath}. Run 'tauri-windows-bundle init' first.`
+    );
+  }
+  return loadTemplate(localPath);
 }
 
 function getExtensionTemplate(name: string): string {
@@ -42,11 +48,16 @@ function getExtensionTemplate(name: string): string {
 
 export function generateManifestTemplate(windowsDir: string): void {
   const templatePath = path.join(windowsDir, 'AppxManifest.xml.template');
-  const template = getManifestTemplate();
+  const template = loadTemplate(path.join(TEMPLATES_DIR, 'AppxManifest.xml.template'));
   fs.writeFileSync(templatePath, template);
 }
 
-export function generateManifest(config: MergedConfig, arch: string, minVersion: string): string {
+export function generateManifest(
+  config: MergedConfig,
+  arch: string,
+  minVersion: string,
+  windowsDir: string
+): string {
   const variables: Record<string, string> = {
     PACKAGE_NAME: config.identifier,
     PUBLISHER: config.publisher,
@@ -61,7 +72,7 @@ export function generateManifest(config: MergedConfig, arch: string, minVersion:
     CAPABILITIES: generateCapabilities(config.capabilities || DEFAULT_CAPABILITIES),
   };
 
-  return replaceTemplateVariables(getManifestTemplate(), variables);
+  return replaceTemplateVariables(getManifestTemplate(windowsDir), variables);
 }
 
 function generateExtensions(config: MergedConfig): string {

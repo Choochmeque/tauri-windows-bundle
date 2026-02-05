@@ -152,7 +152,14 @@ export async function build(options: BuildOptions): Promise<void> {
 
     // Prepare AppxContent directory
     console.log(`  Preparing AppxContent for ${arch}...`);
-    const appxDir = prepareAppxContent(projectRoot, arch, config, tauriConfig, minVersion);
+    const appxDir = prepareAppxContent(
+      projectRoot,
+      arch,
+      config,
+      tauriConfig,
+      minVersion,
+      windowsDir
+    );
     appxDirs.push({ arch, dir: appxDir });
     console.log(`  AppxContent ready: ${appxDir}`);
   }

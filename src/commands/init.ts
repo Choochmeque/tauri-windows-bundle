@@ -15,7 +15,6 @@ export async function init(options: InitOptions): Promise<void> {
 
   // Create directories
   fs.mkdirSync(path.join(windowsDir, 'Assets'), { recursive: true });
-  fs.mkdirSync(path.join(windowsDir, 'extensions'), { recursive: true });
 
   // Generate bundle.config.json
   generateBundleConfig(windowsDir, tauriConfig);
