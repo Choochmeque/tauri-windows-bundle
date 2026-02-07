@@ -266,8 +266,18 @@ describe('isVersionSufficient', () => {
 });
 
 describe('execWithProgress', () => {
+  const originalIsTTY = process.stdout.isTTY;
+  const originalCI = process.env.CI;
+
   beforeEach(() => {
     mockSpawn.mockReset();
+    Object.defineProperty(process.stdout, 'isTTY', { value: originalIsTTY, configurable: true });
+    process.env.CI = originalCI;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(process.stdout, 'isTTY', { value: originalIsTTY, configurable: true });
+    process.env.CI = originalCI;
   });
 
   function createMockChildProcess(exitCode: number = 0, emitError: Error | null = null) {
@@ -370,6 +380,9 @@ describe('execWithProgress', () => {
   });
 
   it('shows spinner instead of output when not verbose', async () => {
+    Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
+    delete process.env.CI;
+
     const mockChild = createMockChildProcess(0);
     mockSpawn.mockReturnValue(mockChild);
     const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
@@ -379,6 +392,21 @@ describe('execWithProgress', () => {
     // Spinner writes to stdout with carriage return
     expect(writeSpy).toHaveBeenCalledWith(expect.stringContaining('Testing...'));
     writeSpy.mockRestore();
+  });
+
+  it('uses static progress logs in CI', async () => {
+    Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
+    process.env.CI = 'true';
+
+    const mockChild = createMockChildProcess(0);
+    mockSpawn.mockReturnValue(mockChild);
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await execWithProgress('echo test', { message: 'Building for x64...' });
+
+    expect(logSpy).toHaveBeenCalledWith('Building for x64...');
+    expect(logSpy).toHaveBeenCalledWith('Done: Building for x64...');
+    logSpy.mockRestore();
   });
 
   it('shows captured output on error when not verbose', async () => {

@@ -6,6 +6,18 @@ const execPromise = promisify(exec);
 
 const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
+function isCiEnvironment(): boolean {
+  const ci = process.env.CI;
+  if (!ci) return false;
+
+  const normalized = ci.toLowerCase();
+  return normalized !== '0' && normalized !== 'false';
+}
+
+function shouldAnimateSpinner(): boolean {
+  return Boolean(process.stdout.isTTY) && !isCiEnvironment();
+}
+
 export class Spinner {
   private frameIndex = 0;
   private intervalId: ReturnType<typeof setInterval> | null = null;
@@ -105,6 +117,8 @@ export async function execWithProgress(
 ): Promise<void> {
   const verbose = options?.verbose ?? false;
   const message = options?.message ?? 'Running...';
+  const useSpinner = !verbose && shouldAnimateSpinner();
+  const useStaticProgress = !verbose && !useSpinner;
 
   return new Promise((resolve, reject) => {
     const [cmd, ...args] = command.split(' ');
@@ -117,9 +131,11 @@ export async function execWithProgress(
     let spinner: Spinner | null = null;
     let capturedOutput = '';
 
-    if (!verbose) {
+    if (useSpinner) {
       spinner = new Spinner(message);
       spinner.start();
+    } else if (useStaticProgress) {
+      console.log(message);
     }
 
     child.stdout?.on('data', (data: Buffer) => {
@@ -141,9 +157,15 @@ export async function execWithProgress(
     child.on('close', (code) => {
       if (code === 0) {
         spinner?.stop(true);
+        if (useStaticProgress) {
+          console.log(`Done: ${message}`);
+        }
         resolve();
       } else {
         spinner?.fail();
+        if (useStaticProgress) {
+          console.error(`Failed: ${message}`);
+        }
         if (!verbose && capturedOutput) {
           console.error('\nBuild output:\n' + capturedOutput);
         }
@@ -153,6 +175,9 @@ export async function execWithProgress(
 
     child.on('error', (error) => {
       spinner?.fail();
+      if (useStaticProgress) {
+        console.error(`Failed: ${message}`);
+      }
       if (!verbose && capturedOutput) {
         console.error('\nBuild output:\n' + capturedOutput);
       }
