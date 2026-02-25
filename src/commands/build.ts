@@ -175,6 +175,14 @@ export async function build(options: BuildOptions): Promise<void> {
     ...appxDirs.flatMap(({ arch, dir }) => [`--dir-${arch}`, dir]),
   ];
 
+  // Resource index generation (resources.pri)
+  if (bundleConfig.resourceIndex?.enabled) {
+    args.push('--makepri');
+    if (bundleConfig.resourceIndex.keepConfig) {
+      args.push('--makepri-keep-config');
+    }
+  }
+
   // Signing
   if (bundleConfig.signing?.pfx) {
     args.push('--pfx', bundleConfig.signing.pfx);

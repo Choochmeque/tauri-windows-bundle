@@ -23,6 +23,10 @@ export interface CapabilitiesConfig {
 export interface BundleConfig {
   publisher?: string;
   publisherDisplayName?: string;
+  resourceIndex?: {
+    enabled?: boolean;
+    keepConfig?: boolean;
+  };
   capabilities?: CapabilitiesConfig;
   extensions?: {
     shareTarget?: boolean;

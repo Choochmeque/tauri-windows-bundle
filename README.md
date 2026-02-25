@@ -12,6 +12,7 @@ MSIX packaging tool for Tauri apps - create Windows Store ready bundles with mul
 - **Multiarch Support** - Build for x64 and arm64 in one bundle
 - **tauri.conf.json Integration** - Automatically reads app name, version, icons, and resources
 - **Code Signing** - Support for PFX certificates and Windows certificate store
+- **Resource Indexing** - Optional `resources.pri` generation for qualified assets
 - **Windows Extensions** - Share Target, File Associations, Protocol Handlers, Startup Task, Context Menus, Background Tasks, App Execution Alias, App Services, Toast Activation, Autoplay, Print Task Settings, Thumbnail/Preview Handlers
 
 ## Prerequisites
@@ -69,6 +70,10 @@ Edit `src-tauri/gen/windows/bundle.config.json`:
   "signing": {
     "pfx": null,
     "pfxPassword": null
+  },
+  "resourceIndex": {
+    "enabled": false,
+    "keepConfig": false
   }
 }
 ```
@@ -92,6 +97,10 @@ Edit `src-tauri/gen/windows/bundle.config.json`:
 - `restricted` - Requires Store approval (`<rescap:Capability>`)
 
 Note: `runFullTrust` is always auto-added (required for Tauri apps).
+
+`resourceIndex.enabled` generates `resources.pri` via `msixbundle-cli --makepri` before packing. Enable this when using qualified assets (for example, scale-specific logos like `Square44x44Logo.scale-200.png`).
+
+`resourceIndex.keepConfig` keeps generated `priconfig.xml` in each `AppxContent` directory for debugging.
 
 **Auto-read from tauri.conf.json / tauri.windows.conf.json:**
 - `displayName` ← `productName`

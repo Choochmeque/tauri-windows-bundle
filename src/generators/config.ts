@@ -17,6 +17,10 @@ export function generateBundleConfig(windowsDir: string, _tauriConfig: TauriConf
       pfx: null,
       pfxPassword: null,
     },
+    resourceIndex: {
+      enabled: false,
+      keepConfig: false,
+    },
   };
 
   const configPath = path.join(windowsDir, 'bundle.config.json');
