@@ -766,6 +766,110 @@ describe('build command', () => {
     expect(execAsync).not.toHaveBeenCalledWith(expect.stringContaining('--pfx-password'));
   });
 
+  it('passes --makepri when resourceIndex is enabled', async () => {
+    const projectDir = createFullProject();
+    const windowsDir = path.join(projectDir, 'src-tauri', 'gen', 'windows');
+    fs.writeFileSync(
+      path.join(windowsDir, 'bundle.config.json'),
+      JSON.stringify({
+        publisher: 'CN=TestCompany',
+        publisherDisplayName: 'Test Company',
+        capabilities: { general: ['internetClient'] },
+        resourceIndex: {
+          enabled: true,
+          keepConfig: false,
+        },
+      })
+    );
+
+    vi.mocked(execAsync).mockResolvedValueOnce({ stdout: '', stderr: '' });
+
+    const originalCwd = process.cwd();
+    process.chdir(tempDir);
+
+    try {
+      await build({});
+    } catch {
+      // Expected
+    }
+
+    process.chdir(originalCwd);
+
+    const commands = vi.mocked(execAsync).mock.calls.map(([command]) => command);
+    expect(
+      commands.some(
+        (command) =>
+          typeof command === 'string' &&
+          command.startsWith('msixbundle-cli --force') &&
+          command.includes('--makepri')
+      )
+    ).toBe(true);
+  });
+
+  it('passes --makepri-keep-config when resourceIndex.keepConfig is true', async () => {
+    const projectDir = createFullProject();
+    const windowsDir = path.join(projectDir, 'src-tauri', 'gen', 'windows');
+    fs.writeFileSync(
+      path.join(windowsDir, 'bundle.config.json'),
+      JSON.stringify({
+        publisher: 'CN=TestCompany',
+        publisherDisplayName: 'Test Company',
+        capabilities: { general: ['internetClient'] },
+        resourceIndex: {
+          enabled: true,
+          keepConfig: true,
+        },
+      })
+    );
+
+    vi.mocked(execAsync).mockResolvedValueOnce({ stdout: '', stderr: '' });
+
+    const originalCwd = process.cwd();
+    process.chdir(tempDir);
+
+    try {
+      await build({});
+    } catch {
+      // Expected
+    }
+
+    process.chdir(originalCwd);
+
+    expect(execAsync).toHaveBeenCalledWith(expect.stringContaining('--makepri-keep-config'));
+  });
+
+  it('builds normally with resourceIndex enabled', async () => {
+    const projectDir = createFullProject();
+    const windowsDir = path.join(projectDir, 'src-tauri', 'gen', 'windows');
+    fs.writeFileSync(
+      path.join(windowsDir, 'bundle.config.json'),
+      JSON.stringify({
+        publisher: 'CN=TestCompany',
+        publisherDisplayName: 'Test Company',
+        capabilities: { general: ['internetClient'] },
+        resourceIndex: {
+          enabled: true,
+        },
+      })
+    );
+
+    vi.mocked(execAsync).mockResolvedValueOnce({ stdout: '', stderr: '' });
+
+    const originalCwd = process.cwd();
+    process.chdir(tempDir);
+
+    try {
+      await build({});
+    } catch {
+      // Expected
+    }
+
+    process.chdir(originalCwd);
+
+    expect(execAsync).toHaveBeenCalledWith(expect.stringContaining('--makepri'));
+    expect(processExitSpy).not.toHaveBeenCalledWith(1);
+  });
+
   it('outputs msixbundle-cli stdout when present', async () => {
     createFullProject();
     vi.mocked(execAsync).mockResolvedValueOnce({ stdout: 'MSIX created successfully', stderr: '' });
