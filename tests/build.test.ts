@@ -801,7 +801,8 @@ describe('build command', () => {
         (command) =>
           typeof command === 'string' &&
           command.startsWith('msixbundle-cli --force') &&
-          command.includes('--makepri')
+          command.includes('--makepri') &&
+          command.includes('--makepri-default-language en-us')
       )
     ).toBe(true);
   });

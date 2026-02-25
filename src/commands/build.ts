@@ -21,6 +21,7 @@ import {
   MIN_MSIXBUNDLE_CLI_VERSION,
   promptInstall,
 } from '../utils/exec.js';
+import { getDefaultLanguageFromManifestFile } from '../core/manifest.js';
 
 export async function build(options: BuildOptions): Promise<void> {
   console.log('Building MSIX package...\n');
@@ -177,7 +178,14 @@ export async function build(options: BuildOptions): Promise<void> {
 
   // Resource index generation (resources.pri)
   if (bundleConfig.resourceIndex?.enabled) {
+    const defaultLanguage = getDefaultLanguageFromManifestFile(
+      path.join(appxDirs[0].dir, 'AppxManifest.xml')
+    );
+
     args.push('--makepri');
+    if (defaultLanguage) {
+      args.push('--makepri-default-language', defaultLanguage);
+    }
     if (bundleConfig.resourceIndex.keepConfig) {
       args.push('--makepri-keep-config');
     }
