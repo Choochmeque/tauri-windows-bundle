@@ -17,6 +17,9 @@ export function prepareAppxContent(
   const buildDir = path.join(srcTauriDir, 'target', target, 'release');
   const appxDir = path.join(srcTauriDir, 'target', 'appx', arch);
 
+  // Clear stale output from previous builds
+  fs.rmSync(appxDir, { recursive: true, force: true });
+
   // Create directories
   fs.mkdirSync(path.join(appxDir, 'Assets'), { recursive: true });
 
