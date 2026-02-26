@@ -17,7 +17,7 @@ describe('prepareAppxContent', () => {
     identifier: 'com.example.testapp',
     publisher: 'CN=TestCompany',
     publisherDisplayName: 'Test Company',
-    capabilities: ['internetClient'],
+    capabilities: { general: ['internetClient'] },
   };
 
   const mockTauriConfig: TauriConfig = {
@@ -71,6 +71,31 @@ describe('prepareAppxContent', () => {
     );
 
     expect(fs.existsSync(path.join(result, 'TestApp.exe'))).toBe(true);
+  });
+
+  it('clears stale files from existing appx directory', () => {
+    const buildDir = path.join(tempDir, 'src-tauri', 'target', 'x86_64-pc-windows-msvc', 'release');
+    fs.mkdirSync(buildDir, { recursive: true });
+    fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe content');
+
+    const existingAppxDir = path.join(tempDir, 'src-tauri', 'target', 'appx', 'x64');
+    fs.mkdirSync(path.join(existingAppxDir, 'Assets'), { recursive: true });
+    fs.writeFileSync(path.join(existingAppxDir, 'stale.txt'), 'stale');
+    fs.writeFileSync(path.join(existingAppxDir, 'Assets', 'stale.png'), 'stale image');
+
+    const result = prepareAppxContent(
+      tempDir,
+      'x64',
+      mockConfig,
+      mockTauriConfig,
+      '10.0.17763.0',
+      windowsDir
+    );
+
+    expect(fs.existsSync(path.join(result, 'stale.txt'))).toBe(false);
+    expect(fs.existsSync(path.join(result, 'Assets', 'stale.png'))).toBe(false);
+    expect(fs.existsSync(path.join(result, 'TestApp.exe'))).toBe(true);
+    expect(fs.existsSync(path.join(result, 'AppxManifest.xml'))).toBe(true);
   });
 
   it('generates AppxManifest.xml', () => {
