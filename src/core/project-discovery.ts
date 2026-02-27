@@ -41,7 +41,8 @@ export function readTauriConfig(projectRoot: string): TauriConfig {
     return JSON.parse(content) as TauriConfig;
   } catch (error) {
     throw new Error(
-      `Failed to parse tauri.conf.json: ${error instanceof Error ? error.message : error}`
+      `Failed to parse tauri.conf.json: ${error instanceof Error ? error.message : error}`,
+      { cause: error }
     );
   }
 }
@@ -58,7 +59,8 @@ export function readTauriWindowsConfig(projectRoot: string): TauriConfig | null 
     return JSON.parse(content) as TauriConfig;
   } catch (error) {
     throw new Error(
-      `Failed to parse tauri.windows.conf.json: ${error instanceof Error ? error.message : error}`
+      `Failed to parse tauri.windows.conf.json: ${error instanceof Error ? error.message : error}`,
+      { cause: error }
     );
   }
 }
@@ -75,7 +77,8 @@ export function readBundleConfig(windowsDir: string): BundleConfig {
     return JSON.parse(content) as BundleConfig;
   } catch (error) {
     throw new Error(
-      `Failed to parse bundle.config.json: ${error instanceof Error ? error.message : error}`
+      `Failed to parse bundle.config.json: ${error instanceof Error ? error.message : error}`,
+      { cause: error }
     );
   }
 }
@@ -96,7 +99,7 @@ export function resolveVersion(version: string, tauriConfigDir: string): string 
       return json.version;
     } catch (error) {
       if (error instanceof SyntaxError) {
-        throw new Error(`Failed to parse ${version} as JSON: ${error.message}`);
+        throw new Error(`Failed to parse ${version} as JSON: ${error.message}`, { cause: error });
       }
       throw error;
     }
