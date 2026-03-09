@@ -398,6 +398,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Install msixbundle-cli
+        run: cargo install msixbundle-cli
+
       - name: Build MSIX bundle
         run: pnpm tauri:windows:build --arch x64,arm64 --runner pnpm
 
