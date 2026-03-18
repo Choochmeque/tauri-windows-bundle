@@ -1,6 +1,6 @@
 {
   "name": "@choochmeque/tauri-windows-bundle",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "description": "MSIX packaging tool for Tauri apps - Windows Store ready bundles",
   "type": "module",
   "bin": {
@@ -38,22 +38,22 @@
     "templates"
   ],
   "dependencies": {
-    "commander": "^14.0.2",
-    "glob": "^13.0.0",
+    "commander": "^14.0.3",
+    "glob": "^13.0.6",
     "image-js": "^1.4.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@rollup/plugin-node-resolve": "^16.0.0",
-    "@rollup/plugin-typescript": "^12.0.0",
-    "@types/node": "^25.0.3",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-typescript": "^12.3.0",
+    "@types/node": "^25.5.0",
     "@vitest/coverage-v8": "^4.1.0",
-    "eslint": "^10.0.2",
-    "prettier": "^3.0.0",
-    "rollup": "^4.0.0",
-    "tslib": "^2.6.0",
-    "typescript": "^5.3.3",
-    "typescript-eslint": "^8.0.0",
+    "eslint": "^10.0.3",
+    "prettier": "^3.8.1",
+    "rollup": "^4.59.0",
+    "tslib": "^2.8.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.57.1",
     "vitest": "^4.1.0"
   },
   "packageManager": "pnpm@10.16.0+sha512.8066e7b034217b700a9a4dbb3a005061d641ba130a89915213a10b3ca4919c19c037bec8066afdc559b89635fdb806b16ea673f2468fbb28aabfa13c53e3f769"
