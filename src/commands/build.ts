@@ -159,7 +159,8 @@ export async function build(options: BuildOptions): Promise<void> {
       config,
       tauriConfig,
       minVersion,
-      windowsDir
+      windowsDir,
+      options.debug
     );
     appxDirs.push({ arch, dir: appxDir });
     console.log(`  AppxContent ready: ${appxDir}`);

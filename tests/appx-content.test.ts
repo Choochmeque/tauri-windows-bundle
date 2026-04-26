@@ -126,6 +126,49 @@ describe('prepareAppxContent', () => {
     ).toThrow('Executable not found');
   });
 
+  it('uses debug build directory when debug=true', () => {
+    const buildDir = path.join(tempDir, 'src-tauri', 'target', 'x86_64-pc-windows-msvc', 'debug');
+    fs.mkdirSync(buildDir, { recursive: true });
+    fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock debug exe');
+
+    const result = prepareAppxContent(
+      tempDir,
+      'x64',
+      mockConfig,
+      mockTauriConfig,
+      '10.0.17763.0',
+      windowsDir,
+      true
+    );
+
+    expect(fs.existsSync(path.join(result, 'TestApp.exe'))).toBe(true);
+    expect(fs.readFileSync(path.join(result, 'TestApp.exe'), 'utf-8')).toBe('mock debug exe');
+  });
+
+  it('throws when debug exe is missing even if release exe exists', () => {
+    const releaseDir = path.join(
+      tempDir,
+      'src-tauri',
+      'target',
+      'x86_64-pc-windows-msvc',
+      'release'
+    );
+    fs.mkdirSync(releaseDir, { recursive: true });
+    fs.writeFileSync(path.join(releaseDir, 'TestApp.exe'), 'mock release exe');
+
+    expect(() =>
+      prepareAppxContent(
+        tempDir,
+        'x64',
+        mockConfig,
+        mockTauriConfig,
+        '10.0.17763.0',
+        windowsDir,
+        true
+      )
+    ).toThrow('Executable not found');
+  });
+
   it('handles arm64 architecture', () => {
     const buildDir = path.join(
       tempDir,

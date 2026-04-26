@@ -10,11 +10,12 @@ export function prepareAppxContent(
   config: MergedConfig,
   tauriConfig: TauriConfig,
   minVersion: string,
-  windowsDir: string
+  windowsDir: string,
+  debug: boolean = false
 ): string {
   const target = arch === 'x64' ? 'x86_64-pc-windows-msvc' : 'aarch64-pc-windows-msvc';
   const srcTauriDir = path.join(projectRoot, 'src-tauri');
-  const buildDir = path.join(srcTauriDir, 'target', target, 'release');
+  const buildDir = path.join(srcTauriDir, 'target', target, debug ? 'debug' : 'release');
   const appxDir = path.join(srcTauriDir, 'target', 'appx', arch);
 
   // Clear stale output from previous builds
