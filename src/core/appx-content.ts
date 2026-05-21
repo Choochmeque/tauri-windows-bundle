@@ -4,6 +4,17 @@ import { glob } from 'glob';
 import type { MergedConfig, TauriConfig } from '../types.js';
 import { generateManifest } from './manifest.js';
 
+// Cargo writes artifacts to $CARGO_TARGET_DIR (resolved against CWD if relative)
+// when set; otherwise to <srcTauriDir>/target. Note: when CARGO_TARGET_DIR is set,
+// there's no extra "target" path segment.
+export function resolveCargoTargetDir(srcTauriDir: string): string {
+  const envDir = process.env.CARGO_TARGET_DIR;
+  if (envDir && envDir.length > 0) {
+    return path.resolve(envDir);
+  }
+  return path.join(srcTauriDir, 'target');
+}
+
 export function prepareAppxContent(
   projectRoot: string,
   arch: string,
@@ -15,8 +26,9 @@ export function prepareAppxContent(
 ): string {
   const target = arch === 'x64' ? 'x86_64-pc-windows-msvc' : 'aarch64-pc-windows-msvc';
   const srcTauriDir = path.join(projectRoot, 'src-tauri');
-  const buildDir = path.join(srcTauriDir, 'target', target, debug ? 'debug' : 'release');
-  const appxDir = path.join(srcTauriDir, 'target', 'appx', arch);
+  const targetDir = resolveCargoTargetDir(srcTauriDir);
+  const buildDir = path.join(targetDir, target, debug ? 'debug' : 'release');
+  const appxDir = path.join(targetDir, 'appx', arch);
 
   // Clear stale output from previous builds
   fs.rmSync(appxDir, { recursive: true, force: true });

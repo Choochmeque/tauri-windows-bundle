@@ -169,6 +169,33 @@ describe('prepareAppxContent', () => {
     ).toThrow('Executable not found');
   });
 
+  it('reads exe from CARGO_TARGET_DIR when set', () => {
+    const customTargetDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cargo-target-'));
+    const buildDir = path.join(customTargetDir, 'x86_64-pc-windows-msvc', 'release');
+    fs.mkdirSync(buildDir, { recursive: true });
+    fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe from CARGO_TARGET_DIR');
+
+    const original = process.env.CARGO_TARGET_DIR;
+    process.env.CARGO_TARGET_DIR = customTargetDir;
+    try {
+      const result = prepareAppxContent(
+        tempDir,
+        'x64',
+        mockConfig,
+        mockTauriConfig,
+        '10.0.17763.0',
+        windowsDir
+      );
+      expect(fs.readFileSync(path.join(result, 'TestApp.exe'), 'utf-8')).toBe(
+        'mock exe from CARGO_TARGET_DIR'
+      );
+    } finally {
+      if (original === undefined) delete process.env.CARGO_TARGET_DIR;
+      else process.env.CARGO_TARGET_DIR = original;
+      fs.rmSync(customTargetDir, { recursive: true, force: true });
+    }
+  });
+
   it('handles arm64 architecture', () => {
     const buildDir = path.join(
       tempDir,

@@ -11,7 +11,7 @@ import {
   toFourPartVersion,
 } from '../core/project-discovery.js';
 import { jsonMergePatch } from '../utils/merge.js';
-import { prepareAppxContent } from '../core/appx-content.js';
+import { prepareAppxContent, resolveCargoTargetDir } from '../core/appx-content.js';
 import {
   execAsync,
   execWithProgress,
@@ -168,7 +168,7 @@ export async function build(options: BuildOptions): Promise<void> {
 
   // Call msixbundle-cli
   console.log('\nCreating MSIX package...');
-  const outDir = path.join(projectRoot, 'src-tauri', 'target', 'msix');
+  const outDir = path.join(resolveCargoTargetDir(path.join(projectRoot, 'src-tauri')), 'msix');
 
   const args = [
     '--force',
