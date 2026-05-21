@@ -7,7 +7,7 @@ export interface TauriConfig {
     shortDescription?: string;
     longDescription?: string;
     publisher?: string;
-    resources?: (string | { src: string; target: string })[];
+    resources?: (string | { src: string; target: string })[] | Record<string, string>;
     windows?: {
       certificateThumbprint?: string;
     };

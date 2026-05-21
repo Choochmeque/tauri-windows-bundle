@@ -325,6 +325,43 @@ describe('prepareAppxContent', () => {
     expect(fs.existsSync(path.join(result, 'static', 'images', 'logo.png'))).toBe(true);
   });
 
+  it('copies bundled resources from tauri config (map form)', () => {
+    const buildDir = path.join(tempDir, 'src-tauri', 'target', 'x86_64-pc-windows-msvc', 'release');
+    fs.mkdirSync(buildDir, { recursive: true });
+    fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
+
+    const srcTauri = path.join(tempDir, 'src-tauri');
+    fs.mkdirSync(path.join(srcTauri, 'data'), { recursive: true });
+    fs.writeFileSync(path.join(srcTauri, 'data', 'config.json'), '{}');
+    fs.mkdirSync(path.join(srcTauri, 'docs'), { recursive: true });
+    fs.writeFileSync(path.join(srcTauri, 'docs', 'a.md'), 'a');
+    fs.writeFileSync(path.join(srcTauri, 'docs', 'b.md'), 'b');
+
+    const configWithResources: TauriConfig = {
+      ...mockTauriConfig,
+      bundle: {
+        resources: {
+          'data/config.json': 'resources/config.json',
+          'docs/*.md': 'website-docs/',
+        },
+      },
+    };
+
+    const result = prepareAppxContent(
+      tempDir,
+      'x64',
+      mockConfig,
+      configWithResources,
+      '10.0.17763.0',
+      windowsDir
+    );
+
+    expect(fs.existsSync(path.join(result, 'resources', 'config.json'))).toBe(true);
+    // Glob in map form: files are copied flat into target dir.
+    expect(fs.existsSync(path.join(result, 'website-docs', 'a.md'))).toBe(true);
+    expect(fs.existsSync(path.join(result, 'website-docs', 'b.md'))).toBe(true);
+  });
+
   it('copies directory resources using string pattern (glob)', () => {
     const buildDir = path.join(tempDir, 'src-tauri', 'target', 'x86_64-pc-windows-msvc', 'release');
     fs.mkdirSync(buildDir, { recursive: true });

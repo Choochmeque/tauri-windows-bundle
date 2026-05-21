@@ -70,36 +70,40 @@ function copyBundledResources(
   tauriConfig: TauriConfig
 ): void {
   const resources = tauriConfig.bundle?.resources;
-
-  if (!resources || resources.length === 0) return;
+  if (!resources) return;
 
   const srcDir = path.join(projectRoot, 'src-tauri');
 
-  for (const resource of resources) {
-    if (typeof resource === 'string') {
-      // Glob pattern like "assets/*" or specific file
-      const files = glob.sync(resource, { cwd: srcDir });
+  // Tauri accepts resources as an array OR as a map { src: target }.
+  // In map form, glob matches do NOT preserve directory structure — files
+  // are copied flat into the target directory.
+  const entries: { src: string; target?: string }[] = Array.isArray(resources)
+    ? resources.map((r) => (typeof r === 'string' ? { src: r } : { src: r.src, target: r.target }))
+    : Object.entries(resources).map(([src, target]) => ({ src, target }));
 
-      for (const file of files) {
-        const src = path.join(srcDir, file);
-        const dest = path.join(appxDir, file);
-        fs.mkdirSync(path.dirname(dest), { recursive: true });
+  for (const { src, target } of entries) {
+    const matches = glob.sync(src, { cwd: srcDir });
+    const files = matches.length > 0 ? matches : [src];
 
-        if (fs.statSync(src).isDirectory()) {
-          fs.cpSync(src, dest, { recursive: true });
-        } else {
-          fs.copyFileSync(src, dest);
-        }
-      }
-    } else if (typeof resource === 'object' && resource.src && resource.target) {
-      const src = path.join(srcDir, resource.src);
-      const dest = path.join(appxDir, resource.target);
-      fs.mkdirSync(path.dirname(dest), { recursive: true });
+    for (const file of files) {
+      const absSrc = path.join(srcDir, file);
+      if (!fs.existsSync(absSrc)) continue;
 
-      if (fs.statSync(src).isDirectory()) {
-        fs.cpSync(src, dest, { recursive: true });
+      let dest: string;
+      if (target === undefined) {
+        dest = path.join(appxDir, file);
+      } else if (matches.length > 1 || /[*?[\]]/.test(src)) {
+        // Map form with a glob: flatten into target dir.
+        dest = path.join(appxDir, target, path.basename(file));
       } else {
-        fs.copyFileSync(src, dest);
+        dest = path.join(appxDir, target);
+      }
+
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      if (fs.statSync(absSrc).isDirectory()) {
+        fs.cpSync(absSrc, dest, { recursive: true });
+      } else {
+        fs.copyFileSync(absSrc, dest);
       }
     }
   }
