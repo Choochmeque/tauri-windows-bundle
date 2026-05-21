@@ -8,7 +8,7 @@ export default [
       file: 'dist/index.js',
       format: 'es',
     },
-    plugins: [resolve(), typescript({ declaration: true, declarationDir: 'dist' })],
+    plugins: [resolve(), typescript({ declaration: true, declarationDir: 'dist', rootDir: 'src' })],
     external: ['commander', 'glob', 'image-js', 'fs', 'path', 'child_process', 'url'],
   },
   {
@@ -18,7 +18,7 @@ export default [
       format: 'es',
       banner: '#!/usr/bin/env node',
     },
-    plugins: [resolve(), typescript()],
+    plugins: [resolve(), typescript({ rootDir: 'src' })],
     external: ['commander', 'glob', 'image-js', 'fs', 'path', 'child_process', 'url'],
   },
 ];

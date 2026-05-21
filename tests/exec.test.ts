@@ -325,7 +325,7 @@ describe('execWithProgress', () => {
     mockSpawn.mockReturnValue(mockChild);
 
     await expect(execWithProgress('echo test')).resolves.toBeUndefined();
-    expect(mockSpawn).toHaveBeenCalledWith('echo', ['test'], expect.any(Object));
+    expect(mockSpawn).toHaveBeenCalledWith('echo test', [], expect.any(Object));
   });
 
   it('rejects when command fails with non-zero exit code', async () => {
@@ -350,7 +350,7 @@ describe('execWithProgress', () => {
 
     await execWithProgress('echo test', { cwd: '/tmp' });
 
-    expect(mockSpawn).toHaveBeenCalledWith('echo', ['test'], {
+    expect(mockSpawn).toHaveBeenCalledWith('echo test', [], {
       cwd: '/tmp',
       stdio: ['inherit', 'pipe', 'pipe'],
       shell: true,

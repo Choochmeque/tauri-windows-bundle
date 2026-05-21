@@ -121,8 +121,7 @@ export async function execWithProgress(
   const useStaticProgress = !verbose && !useSpinner;
 
   return new Promise((resolve, reject) => {
-    const [cmd, ...args] = command.split(' ');
-    const child = spawn(cmd, args, {
+    const child = spawn(command, [], {
       cwd: options?.cwd,
       stdio: ['inherit', 'pipe', 'pipe'],
       shell: true,
