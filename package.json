@@ -38,7 +38,7 @@
     "templates"
   ],
   "dependencies": {
-    "commander": "^14.0.3",
+    "commander": "^15.0.0",
     "glob": "^13.0.6",
     "image-js": "^1.6.0"
   },
