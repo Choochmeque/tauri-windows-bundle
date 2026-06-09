@@ -190,8 +190,11 @@ function generateExtensions(config: MergedConfig): string {
 
   if (config.extensions?.toastActivation) {
     const template = getExtensionTemplate('toast-activation');
-    const clsid =
-      config.extensions.toastActivation.clsid ?? generateClsid(config.identifier + '.toast');
+    // MSIX schema for `ToastActivatorCLSID` requires the bare UUID form;
+    // the braced `{xxx-...}` form fails MakeAppx validation with C00CE169.
+    const clsid = (
+      config.extensions.toastActivation.clsid ?? generateClsid(config.identifier + '.toast')
+    ).replace(/[{}]/g, '');
     const result = replaceTemplateVariables(template, {
       CLSID: clsid,
     });

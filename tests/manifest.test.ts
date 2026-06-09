@@ -262,7 +262,7 @@ describe('generateManifest', () => {
     expect(manifest).toContain('ToastActivatorCLSID=');
   });
 
-  it('uses explicit toast activator CLSID when provided', () => {
+  it('uses explicit toast activator CLSID when provided, stripping surrounding braces', () => {
     const clsid = '{12345678-1234-1234-1234-123456789012}';
     const config: MergedConfig = {
       ...mockConfig,
@@ -272,7 +272,23 @@ describe('generateManifest', () => {
     };
     const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
 
-    expect(manifest).toContain(`ToastActivatorCLSID="${clsid}"`);
+    expect(manifest).toContain('ToastActivatorCLSID="12345678-1234-1234-1234-123456789012"');
+    expect(manifest).not.toContain(`ToastActivatorCLSID="${clsid}"`);
+  });
+
+  it('strips braces from auto-generated toast activator CLSID', () => {
+    const config: MergedConfig = {
+      ...mockConfig,
+      extensions: {
+        toastActivation: { activationType: 'foreground' },
+      },
+    };
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
+
+    expect(manifest).toMatch(
+      /ToastActivatorCLSID="[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}"/
+    );
+    expect(manifest).not.toMatch(/ToastActivatorCLSID="\{/);
   });
 
   it('includes autoplay content handler', () => {
