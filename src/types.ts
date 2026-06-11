@@ -124,7 +124,22 @@ export interface MergedConfig extends BundleConfig {
 
 export interface InitOptions {
   path?: string;
+  scale?: boolean;
+  targetSize?: boolean;
+  unplated?: boolean;
+  lightUnplated?: boolean;
+  allVariants?: boolean;
 }
+
+export interface VariantOptions {
+  scale?: boolean;
+  targetSize?: boolean;
+  unplated?: boolean;
+  lightUnplated?: boolean;
+}
+
+export const SCALE_FACTORS = [100, 125, 150, 200, 400] as const;
+export const TARGET_SIZES = [16, 24, 32, 48, 256] as const;
 
 export interface BuildOptions {
   arch?: string;
@@ -141,14 +156,14 @@ export interface MsixAsset {
   size?: number;
   width?: number;
   height?: number;
+  skipScaleVariants?: boolean;
 }
 
 export const MSIX_ASSETS: MsixAsset[] = [
   { name: 'StoreLogo.png', size: 50 },
   { name: 'Square44x44Logo.png', size: 44 },
   { name: 'Square150x150Logo.png', size: 150 },
-  { name: 'Wide310x150Logo.png', width: 310, height: 150 },
-  { name: 'LargeTile.png', size: 310 },
+  { name: 'Wide310x150Logo.png', width: 310, height: 150, skipScaleVariants: true },
 ];
 
 export const DEFAULT_MIN_WINDOWS_VERSION = '10.0.17763.0';

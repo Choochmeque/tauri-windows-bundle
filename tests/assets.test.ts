@@ -87,7 +87,6 @@ describe('generateAssets', () => {
     fs.writeFileSync(path.join(iconsDir, 'StoreLogo.png'), testPng);
     fs.writeFileSync(path.join(iconsDir, 'Square44x44Logo.png'), createTestPng(44, 44));
     fs.writeFileSync(path.join(iconsDir, 'Square150x150Logo.png'), createTestPng(150, 150));
-    fs.writeFileSync(path.join(iconsDir, 'Square310x310Logo.png'), createTestPng(310, 310));
 
     try {
       const result = await generateAssets(tempDir, projectRoot);
@@ -143,6 +142,127 @@ describe('generateAssets', () => {
     } finally {
       fs.rmSync(projectRoot, { recursive: true, force: true });
     }
+  });
+
+  it('does not generate LargeTile.png', async () => {
+    await generateAssets(tempDir);
+    expect(fs.existsSync(path.join(tempDir, 'Assets', 'LargeTile.png'))).toBe(false);
+  });
+});
+
+describe('generateAssets variants', () => {
+  let tempDir: string;
+  let projectRoot: string;
+  let iconsDir: string;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tauri-bundle-test-'));
+    projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'tauri-project-'));
+    iconsDir = path.join(projectRoot, 'src-tauri', 'icons');
+    fs.mkdirSync(iconsDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  });
+
+  function readIhdrWidthHeight(p: string): [number, number] {
+    const buf = fs.readFileSync(p);
+    return [buf.readUInt32BE(16), buf.readUInt32BE(20)];
+  }
+
+  it('does not generate any variants by default', async () => {
+    fs.writeFileSync(path.join(iconsDir, 'icon.png'), createTestPng(310, 310));
+    await generateAssets(tempDir, projectRoot);
+
+    const files = fs.readdirSync(path.join(tempDir, 'Assets'));
+    expect(files.some((f) => f.includes('.scale-'))).toBe(false);
+    expect(files.some((f) => f.includes('.targetsize-'))).toBe(false);
+  });
+
+  it('generates scale variants for 3 assets x 5 factors (no wide, no LargeTile)', async () => {
+    fs.writeFileSync(path.join(iconsDir, 'icon.png'), createTestPng(310, 310));
+    await generateAssets(tempDir, projectRoot, { scale: true });
+
+    const assetsDir = path.join(tempDir, 'Assets');
+    const factors = [100, 125, 150, 200, 400];
+    const bases = ['StoreLogo', 'Square44x44Logo', 'Square150x150Logo'];
+
+    for (const base of bases) {
+      for (const f of factors) {
+        expect(fs.existsSync(path.join(assetsDir, `${base}.scale-${f}.png`))).toBe(true);
+      }
+    }
+
+    // Wide tile and LargeTile must not be scaled
+    const files = fs.readdirSync(assetsDir);
+    expect(files.some((f) => f.startsWith('Wide310x150Logo.scale-'))).toBe(false);
+    expect(files.some((f) => f.startsWith('LargeTile.'))).toBe(false);
+
+    // Spot-check dimensions
+    const [w, h] = readIhdrWidthHeight(path.join(assetsDir, 'Square150x150Logo.scale-200.png'));
+    expect(w).toBe(300);
+    expect(h).toBe(300);
+  });
+
+  it('generates targetSize variants for Square44x44Logo only', async () => {
+    fs.writeFileSync(path.join(iconsDir, 'icon.png'), createTestPng(310, 310));
+    await generateAssets(tempDir, projectRoot, { targetSize: true });
+
+    const assetsDir = path.join(tempDir, 'Assets');
+    for (const size of [16, 24, 32, 48, 256]) {
+      expect(fs.existsSync(path.join(assetsDir, `Square44x44Logo.targetsize-${size}.png`))).toBe(
+        true
+      );
+    }
+
+    const [w, h] = readIhdrWidthHeight(path.join(assetsDir, 'Square44x44Logo.targetsize-256.png'));
+    expect(w).toBe(256);
+    expect(h).toBe(256);
+  });
+
+  it('generates unplated and light-unplated variants', async () => {
+    fs.writeFileSync(path.join(iconsDir, 'icon.png'), createTestPng(310, 310));
+    await generateAssets(tempDir, projectRoot, { unplated: true, lightUnplated: true });
+
+    const assetsDir = path.join(tempDir, 'Assets');
+    for (const size of [16, 24, 32, 48, 256]) {
+      expect(
+        fs.existsSync(
+          path.join(assetsDir, `Square44x44Logo.targetsize-${size}_altform-unplated.png`)
+        )
+      ).toBe(true);
+      expect(
+        fs.existsSync(
+          path.join(assetsDir, `Square44x44Logo.targetsize-${size}_altform-lightunplated.png`)
+        )
+      ).toBe(true);
+    }
+  });
+
+  it('falls back to Square310x310Logo.png when icon.png missing', async () => {
+    fs.writeFileSync(path.join(iconsDir, 'Square310x310Logo.png'), createTestPng(310, 310));
+    await generateAssets(tempDir, projectRoot, { targetSize: true });
+
+    const assetsDir = path.join(tempDir, 'Assets');
+    expect(fs.existsSync(path.join(assetsDir, 'Square44x44Logo.targetsize-32.png'))).toBe(true);
+  });
+
+  it('falls back to 128x128.png when neither icon.png nor Square310x310Logo present', async () => {
+    fs.writeFileSync(path.join(iconsDir, '128x128.png'), createTestPng(128, 128));
+    await generateAssets(tempDir, projectRoot, { targetSize: true });
+
+    const assetsDir = path.join(tempDir, 'Assets');
+    expect(fs.existsSync(path.join(assetsDir, 'Square44x44Logo.targetsize-32.png'))).toBe(true);
+  });
+
+  it('skips variant generation with warning when no source icon found', async () => {
+    await generateAssets(tempDir, projectRoot, { scale: true });
+
+    const files = fs.readdirSync(path.join(tempDir, 'Assets'));
+    expect(files.some((f) => f.includes('.scale-'))).toBe(false);
+    expect(files.some((f) => f.includes('.targetsize-'))).toBe(false);
   });
 });
 

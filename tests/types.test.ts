@@ -17,7 +17,11 @@ describe('MSIX_ASSETS', () => {
     expect(assetNames).toContain('Square44x44Logo.png');
     expect(assetNames).toContain('Square150x150Logo.png');
     expect(assetNames).toContain('Wide310x150Logo.png');
-    expect(assetNames).toContain('LargeTile.png');
+  });
+
+  it('does not include the obsolete LargeTile.png', () => {
+    const assetNames = MSIX_ASSETS.map((a) => a.name);
+    expect(assetNames).not.toContain('LargeTile.png');
   });
 
   it('has correct dimensions for each asset', () => {
@@ -33,9 +37,11 @@ describe('MSIX_ASSETS', () => {
     const wide = MSIX_ASSETS.find((a) => a.name === 'Wide310x150Logo.png');
     expect(wide?.width).toBe(310);
     expect(wide?.height).toBe(150);
+  });
 
-    const large = MSIX_ASSETS.find((a) => a.name === 'LargeTile.png');
-    expect(large?.size).toBe(310);
+  it('marks Wide310x150Logo to skip scale variants', () => {
+    const wide = MSIX_ASSETS.find((a) => a.name === 'Wide310x150Logo.png');
+    expect(wide?.skipScaleVariants).toBe(true);
   });
 });
 

@@ -86,6 +86,31 @@ describe('generateBundleConfig', () => {
       keepConfig: false,
     });
   });
+
+  it('enables resource index when any variant family is requested', () => {
+    const tauriConfig: TauriConfig = {};
+    generateBundleConfig(tempDir, tauriConfig, { scale: true });
+
+    const config = JSON.parse(fs.readFileSync(path.join(tempDir, 'bundle.config.json'), 'utf-8'));
+    expect(config.resourceIndex.enabled).toBe(true);
+  });
+
+  it('enables resource index for unplated/lightUnplated/targetSize variants', () => {
+    const tauriConfig: TauriConfig = {};
+    for (const variants of [{ targetSize: true }, { unplated: true }, { lightUnplated: true }]) {
+      generateBundleConfig(tempDir, tauriConfig, variants);
+      const config = JSON.parse(fs.readFileSync(path.join(tempDir, 'bundle.config.json'), 'utf-8'));
+      expect(config.resourceIndex.enabled).toBe(true);
+    }
+  });
+
+  it('leaves resource index disabled when no variants flags set', () => {
+    const tauriConfig: TauriConfig = {};
+    generateBundleConfig(tempDir, tauriConfig, {});
+
+    const config = JSON.parse(fs.readFileSync(path.join(tempDir, 'bundle.config.json'), 'utf-8'));
+    expect(config.resourceIndex.enabled).toBe(false);
+  });
 });
 
 describe('generateGitignore', () => {

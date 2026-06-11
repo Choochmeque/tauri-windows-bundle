@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { InitOptions } from '../types.js';
+import type { InitOptions, VariantOptions } from '../types.js';
 import { findProjectRoot, readTauriConfig, getWindowsDir } from '../core/project-discovery.js';
 import { generateBundleConfig, generateGitignore } from '../generators/config.js';
 import { generateAssets } from '../generators/assets.js';
@@ -13,19 +13,31 @@ export async function init(options: InitOptions): Promise<void> {
   const tauriConfig = readTauriConfig(projectRoot);
   const windowsDir = getWindowsDir(projectRoot);
 
+  const variants: VariantOptions = {
+    scale: options.allVariants || options.scale,
+    targetSize: options.allVariants || options.targetSize,
+    unplated: options.allVariants || options.unplated,
+    lightUnplated: options.allVariants || options.lightUnplated,
+  };
+  const anyVariant =
+    variants.scale || variants.targetSize || variants.unplated || variants.lightUnplated;
+
   // Create directories
   fs.mkdirSync(path.join(windowsDir, 'Assets'), { recursive: true });
 
   // Generate bundle.config.json
-  generateBundleConfig(windowsDir, tauriConfig);
+  generateBundleConfig(windowsDir, tauriConfig, variants);
   console.log('  Created bundle.config.json');
+  if (anyVariant) {
+    console.log('  Resource index enabled (required for variant assets)');
+  }
 
   // Generate AppxManifest.xml template
   generateManifestTemplate(windowsDir);
   console.log('  Created AppxManifest.xml.template');
 
   // Generate assets (copy from src-tauri/icons or generate placeholders)
-  const assetsCopied = await generateAssets(windowsDir, projectRoot);
+  const assetsCopied = await generateAssets(windowsDir, projectRoot, variants);
 
   // Generate .gitignore
   generateGitignore(windowsDir);

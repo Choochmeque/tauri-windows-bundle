@@ -1,21 +1,27 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Image, read, write } from 'image-js';
-import { MSIX_ASSETS } from '../types.js';
+import { MSIX_ASSETS, SCALE_FACTORS, TARGET_SIZES } from '../types.js';
+import type { VariantOptions } from '../types.js';
 
 // Map MSIX asset names to Tauri icon names
 const TAURI_ICON_MAP: Record<string, string> = {
   'StoreLogo.png': 'StoreLogo.png',
   'Square44x44Logo.png': 'Square44x44Logo.png',
   'Square150x150Logo.png': 'Square150x150Logo.png',
-  'LargeTile.png': 'Square310x310Logo.png',
 };
+
+const VARIANT_SOURCE_CANDIDATES = ['icon.png', 'Square310x310Logo.png', '128x128.png'];
 
 function getTauriIconsDir(projectRoot: string): string {
   return path.join(projectRoot, 'src-tauri', 'icons');
 }
 
-export async function generateAssets(windowsDir: string, projectRoot?: string): Promise<boolean> {
+export async function generateAssets(
+  windowsDir: string,
+  projectRoot?: string,
+  variants?: VariantOptions
+): Promise<boolean> {
   const assetsDir = path.join(windowsDir, 'Assets');
   fs.mkdirSync(assetsDir, { recursive: true });
 
@@ -57,7 +63,82 @@ export async function generateAssets(windowsDir: string, projectRoot?: string): 
     console.log('  Generated placeholder assets - replace with real icons before publishing');
   }
 
+  if (
+    variants &&
+    (variants.scale || variants.targetSize || variants.unplated || variants.lightUnplated)
+  ) {
+    const sourcePath = resolveVariantSource(tauriIconsDir);
+    if (!sourcePath) {
+      console.log(
+        `  Skipping variants: no suitable source icon found (looked for ${VARIANT_SOURCE_CANDIDATES.join(', ')})`
+      );
+    } else {
+      console.log(`  Generating variants from ${path.basename(sourcePath)}`);
+      if (variants.scale) {
+        await generateScaleVariants(assetsDir, sourcePath);
+        console.log('    Scale variants written');
+      }
+      if (variants.targetSize) {
+        await generateTargetSizeVariants(assetsDir, sourcePath, null);
+        console.log('    TargetSize variants written');
+      }
+      if (variants.unplated) {
+        await generateTargetSizeVariants(assetsDir, sourcePath, 'unplated');
+        console.log('    Unplated variants written');
+      }
+      if (variants.lightUnplated) {
+        await generateTargetSizeVariants(assetsDir, sourcePath, 'lightunplated');
+        console.log('    Light-unplated variants written');
+      }
+    }
+  }
+
   return copiedFromTauri;
+}
+
+function resolveVariantSource(tauriIconsDir: string | null): string | null {
+  if (!tauriIconsDir) return null;
+  for (const name of VARIANT_SOURCE_CANDIDATES) {
+    const candidate = path.join(tauriIconsDir, name);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+function variantFilename(baseName: string, suffix: string): string {
+  const stem = baseName.replace(/\.png$/i, '');
+  return `${stem}.${suffix}.png`;
+}
+
+async function generateScaleVariants(assetsDir: string, sourcePath: string): Promise<void> {
+  const source = await read(sourcePath);
+  for (const asset of MSIX_ASSETS) {
+    if (asset.skipScaleVariants) continue;
+    const baseW = asset.width || asset.size || 50;
+    const baseH = asset.height || asset.size || 50;
+    for (const factor of SCALE_FACTORS) {
+      const w = Math.round((baseW * factor) / 100);
+      const h = Math.round((baseH * factor) / 100);
+      const resized = source.resize({ width: w, height: h });
+      const outPath = path.join(assetsDir, variantFilename(asset.name, `scale-${factor}`));
+      await write(outPath, resized);
+    }
+  }
+}
+
+async function generateTargetSizeVariants(
+  assetsDir: string,
+  sourcePath: string,
+  altform: 'unplated' | 'lightunplated' | null
+): Promise<void> {
+  const source = await read(sourcePath);
+  const suffixBase = 'Square44x44Logo.png';
+  for (const size of TARGET_SIZES) {
+    const resized = source.resize({ width: size, height: size });
+    const suffix = altform ? `targetsize-${size}_altform-${altform}` : `targetsize-${size}`;
+    const outPath = path.join(assetsDir, variantFilename(suffixBase, suffix));
+    await write(outPath, resized);
+  }
 }
 
 async function generateWideTile(tauriIconsDir: string, outputPath: string): Promise<boolean> {

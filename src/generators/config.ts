@@ -1,9 +1,18 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { TauriConfig, BundleConfig } from '../types.js';
+import type { TauriConfig, BundleConfig, VariantOptions } from '../types.js';
 import { DEFAULT_CAPABILITIES } from '../types.js';
 
-export function generateBundleConfig(windowsDir: string, _tauriConfig: TauriConfig): void {
+export function generateBundleConfig(
+  windowsDir: string,
+  _tauriConfig: TauriConfig,
+  variants?: VariantOptions
+): void {
+  const variantsRequested = !!(
+    variants &&
+    (variants.scale || variants.targetSize || variants.unplated || variants.lightUnplated)
+  );
+
   const config: BundleConfig = {
     publisher: 'CN=YourCompany',
     publisherDisplayName: 'Your Company Name',
@@ -18,7 +27,7 @@ export function generateBundleConfig(windowsDir: string, _tauriConfig: TauriConf
       pfxPassword: null,
     },
     resourceIndex: {
-      enabled: false,
+      enabled: variantsRequested,
       keepConfig: false,
     },
   };

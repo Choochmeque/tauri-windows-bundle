@@ -38,6 +38,11 @@ program
   .command('init')
   .description('Initialize Windows bundle configuration')
   .option('-p, --path <path>', 'Path to Tauri project')
+  .option('--scale', 'Generate .scale-100/125/150/200/400 variants for tiles')
+  .option('--target-size', 'Generate .targetsize-16/24/32/48/256 variants for Square44x44Logo')
+  .option('--unplated', 'Generate _altform-unplated targetsize variants')
+  .option('--light-unplated', 'Generate _altform-lightunplated targetsize variants')
+  .option('--all-variants', 'Shortcut for all four variant families')
   .action(async (options) => {
     try {
       await init(options);
