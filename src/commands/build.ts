@@ -13,21 +13,39 @@ import {
 import { jsonMergePatch } from '../utils/merge.js';
 import { prepareAppxContent, resolveCargoTargetDir } from '../core/appx-content.js';
 import {
-  execAsync,
+  spawnAsync,
   execWithProgress,
   isMsixbundleCliInstalled,
   getMsixbundleCliVersion,
   isVersionSufficient,
   MIN_MSIXBUNDLE_CLI_VERSION,
   promptInstall,
+  resolveBundledMsixbundleCliPath,
+  resolveMsixbundleCliCommand,
 } from '../utils/exec.js';
 import { getDefaultLanguageFromManifestFile } from '../core/manifest.js';
 
 export async function build(options: BuildOptions): Promise<void> {
   console.log('Building MSIX package...\n');
 
-  // Check if msixbundle-cli is installed
+  // Check if msixbundle-cli is available (either bundled sidecar or on PATH)
+  const bundledPath = resolveBundledMsixbundleCliPath();
+  if (bundledPath && options.verbose) {
+    console.log(`Using bundled msixbundle-cli: ${bundledPath}`);
+  }
+
   if (!(await isMsixbundleCliInstalled())) {
+    if (process.platform === 'win32') {
+      console.error(
+        'msixbundle-cli is not available.\n' +
+          'The bundled @choochmeque/msixbundle-cli-win32 sidecar should have been installed via optionalDependencies.\n' +
+          'Possible causes: --omit=optional / --no-optional was passed, a restrictive registry mirror, or an unsupported CPU architecture.\n' +
+          'Reinstall with: npm install (or pnpm install / yarn install) without that flag.\n' +
+          'Fallback: cargo install msixbundle-cli'
+      );
+      process.exit(1);
+    }
+
     const shouldInstall = await promptInstall(
       'msixbundle-cli is required but not installed.\n' + 'Install it now? (requires Rust/Cargo)'
     );
@@ -203,9 +221,12 @@ export async function build(options: BuildOptions): Promise<void> {
     args.push('--thumbprint', tauriConfig.bundle.windows.certificateThumbprint);
   }
 
+  const msixbundleCli = resolveMsixbundleCliCommand();
   try {
-    console.log(`  Running: msixbundle-cli ${args.join(' ')}`);
-    const result = await execAsync(`msixbundle-cli ${args.join(' ')}`);
+    if (options.verbose) {
+      console.log(`  Running: ${msixbundleCli} ${args.join(' ')}`);
+    }
+    const result = await spawnAsync(msixbundleCli, args);
     if (result.stdout) console.log(result.stdout);
   } catch (error) {
     console.error('Failed to create MSIX:', error);

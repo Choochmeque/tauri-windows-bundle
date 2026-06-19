@@ -42,6 +42,9 @@
     "glob": "^13.0.6",
     "image-js": "^1.6.0"
   },
+  "optionalDependencies": {
+    "@choochmeque/msixbundle-cli-win32": "^1.1.11"
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@rollup/plugin-node-resolve": "^16.0.3",

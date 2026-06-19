@@ -31,12 +31,15 @@ vi.mock('node:readline', () => {
 // Import after mocks
 import {
   execAsync,
+  spawnAsync,
   execWithProgress,
   isMsixbundleCliInstalled,
   getMsixbundleCliVersion,
   isVersionSufficient,
   MIN_MSIXBUNDLE_CLI_VERSION,
   promptInstall,
+  resolveBundledMsixbundleCliPath,
+  resolveMsixbundleCliCommand,
   Spinner,
 } from '../src/utils/exec.js';
 import * as childProcess from 'node:child_process';
@@ -87,27 +90,121 @@ describe('execAsync', () => {
   });
 });
 
+function mockSpawnResult(stdoutText: string, exitCode: number = 0) {
+  return {
+    stdout: {
+      on: vi.fn((event: string, cb: (data: Buffer) => void) => {
+        if (event === 'data') cb(Buffer.from(stdoutText));
+      }),
+    },
+    stderr: {
+      on: vi.fn(),
+    },
+    on: vi.fn((event: string, cb: (...args: unknown[]) => void) => {
+      if (event === 'close') setTimeout(() => cb(exitCode), 0);
+    }),
+  };
+}
+
+function mockSpawnError(error: Error) {
+  return {
+    stdout: { on: vi.fn() },
+    stderr: { on: vi.fn() },
+    on: vi.fn((event: string, cb: (...args: unknown[]) => void) => {
+      if (event === 'error') setTimeout(() => cb(error), 0);
+    }),
+  };
+}
+
+describe('spawnAsync', () => {
+  beforeEach(() => {
+    mockSpawn.mockReset();
+  });
+
+  it('resolves with stdout/stderr when command exits 0', async () => {
+    mockSpawn.mockReturnValue(mockSpawnResult('hello', 0));
+    const result = await spawnAsync('echo', ['hello']);
+    expect(result.stdout).toBe('hello');
+  });
+
+  it('rejects on non-zero exit', async () => {
+    mockSpawn.mockReturnValue(mockSpawnResult('', 2));
+    await expect(spawnAsync('cmd', [])).rejects.toThrow('exited with code 2');
+  });
+
+  it('rejects on spawn error', async () => {
+    mockSpawn.mockReturnValue(mockSpawnError(new Error('spawn failed')));
+    await expect(spawnAsync('cmd', [])).rejects.toThrow('spawn failed');
+  });
+
+  it('passes args as array without shell', async () => {
+    mockSpawn.mockReturnValue(mockSpawnResult('', 0));
+    await spawnAsync('cmd', ['--arg', 'value with spaces']);
+    expect(mockSpawn).toHaveBeenCalledWith(
+      'cmd',
+      ['--arg', 'value with spaces'],
+      expect.objectContaining({ shell: false })
+    );
+  });
+});
+
 describe('isMsixbundleCliInstalled', () => {
   beforeEach(() => {
-    mockExec.mockReset();
+    mockSpawn.mockReset();
   });
 
   it('returns true when msixbundle-cli is installed', async () => {
-    mockExec.mockImplementation((_cmd: string, _opts: unknown, callback: ExecCallback) => {
-      callback(null, { stdout: '1.0.0', stderr: '' });
-    });
-
+    mockSpawn.mockReturnValue(mockSpawnResult('msixbundle-cli 1.1.11', 0));
     const result = await isMsixbundleCliInstalled();
     expect(result).toBe(true);
   });
 
   it('returns false when msixbundle-cli is not installed', async () => {
-    mockExec.mockImplementation((_cmd: string, _opts: unknown, callback: ExecCallback) => {
-      callback(new Error('command not found'), { stdout: '', stderr: '' });
-    });
-
+    mockSpawn.mockReturnValue(mockSpawnError(new Error('ENOENT')));
     const result = await isMsixbundleCliInstalled();
     expect(result).toBe(false);
+  });
+});
+
+describe('resolveBundledMsixbundleCliPath', () => {
+  const originalPlatform = process.platform;
+  const originalArch = process.arch;
+
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+    Object.defineProperty(process, 'arch', { value: originalArch });
+  });
+
+  it('returns null on non-Windows platforms', () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    expect(resolveBundledMsixbundleCliPath()).toBeNull();
+  });
+
+  it('returns null on unsupported architectures', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    Object.defineProperty(process, 'arch', { value: 'ia32' });
+    expect(resolveBundledMsixbundleCliPath()).toBeNull();
+  });
+
+  it('returns null when sidecar package is not installed', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    Object.defineProperty(process, 'arch', { value: 'x64' });
+    // require.resolve will throw because the sidecar is not present in node_modules
+    // during this test run (we're not on Windows or didn't install optionalDependencies).
+    expect(resolveBundledMsixbundleCliPath()).toBeNull();
+  });
+});
+
+describe('resolveMsixbundleCliCommand', () => {
+  const originalPlatform = process.platform;
+
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+  });
+
+  it('falls back to "msixbundle-cli" when bundled is unavailable', () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    expect(resolveMsixbundleCliCommand()).toBe('msixbundle-cli');
   });
 });
 
@@ -176,49 +273,35 @@ describe('promptInstall', () => {
 
 describe('getMsixbundleCliVersion', () => {
   beforeEach(() => {
-    mockExec.mockReset();
+    mockSpawn.mockReset();
   });
 
   it('returns version from "msixbundle-cli X.X.X" format', async () => {
-    mockExec.mockImplementation((_cmd: string, _opts: unknown, callback: ExecCallback) => {
-      callback(null, { stdout: 'msixbundle-cli 1.2.3', stderr: '' });
-    });
-
+    mockSpawn.mockReturnValue(mockSpawnResult('msixbundle-cli 1.2.3', 0));
     const result = await getMsixbundleCliVersion();
     expect(result).toBe('1.2.3');
   });
 
   it('returns version from plain "X.X.X" format', async () => {
-    mockExec.mockImplementation((_cmd: string, _opts: unknown, callback: ExecCallback) => {
-      callback(null, { stdout: '2.0.0', stderr: '' });
-    });
-
+    mockSpawn.mockReturnValue(mockSpawnResult('2.0.0', 0));
     const result = await getMsixbundleCliVersion();
     expect(result).toBe('2.0.0');
   });
 
   it('returns version with whitespace trimmed', async () => {
-    mockExec.mockImplementation((_cmd: string, _opts: unknown, callback: ExecCallback) => {
-      callback(null, { stdout: '  1.0.0\n', stderr: '' });
-    });
-
+    mockSpawn.mockReturnValue(mockSpawnResult('  1.0.0\n', 0));
     const result = await getMsixbundleCliVersion();
     expect(result).toBe('1.0.0');
   });
 
   it('returns null when version cannot be parsed', async () => {
-    mockExec.mockImplementation((_cmd: string, _opts: unknown, callback: ExecCallback) => {
-      callback(null, { stdout: 'unknown version', stderr: '' });
-    });
-
+    mockSpawn.mockReturnValue(mockSpawnResult('unknown version', 0));
     const result = await getMsixbundleCliVersion();
     expect(result).toBeNull();
   });
 
   it('returns null when command fails', async () => {
-    mockExec.mockImplementation((_cmd: string, _opts: unknown, callback: ExecCallback) => {
-      callback(new Error('command not found'), { stdout: '', stderr: '' });
-    });
+    mockSpawn.mockReturnValue(mockSpawnError(new Error('command not found')));
 
     const result = await getMsixbundleCliVersion();
     expect(result).toBeNull();
@@ -258,9 +341,9 @@ describe('isVersionSufficient', () => {
   });
 
   it('works with MIN_MSIXBUNDLE_CLI_VERSION constant', () => {
-    expect(MIN_MSIXBUNDLE_CLI_VERSION).toBe('1.1.4');
-    expect(isVersionSufficient('1.1.4', MIN_MSIXBUNDLE_CLI_VERSION)).toBe(true);
-    expect(isVersionSufficient('1.0.2', MIN_MSIXBUNDLE_CLI_VERSION)).toBe(false);
+    expect(MIN_MSIXBUNDLE_CLI_VERSION).toBe('1.1.11');
+    expect(isVersionSufficient('1.1.11', MIN_MSIXBUNDLE_CLI_VERSION)).toBe(true);
+    expect(isVersionSufficient('1.1.10', MIN_MSIXBUNDLE_CLI_VERSION)).toBe(false);
     expect(isVersionSufficient('1.2.0', MIN_MSIXBUNDLE_CLI_VERSION)).toBe(true);
   });
 });

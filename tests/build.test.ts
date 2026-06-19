@@ -6,23 +6,28 @@ import * as os from 'node:os';
 // Mock exec utilities before importing build
 vi.mock('../src/utils/exec.js', () => ({
   execAsync: vi.fn().mockResolvedValue({ stdout: '', stderr: '' }),
+  spawnAsync: vi.fn().mockResolvedValue({ stdout: '', stderr: '' }),
   execWithProgress: vi.fn().mockResolvedValue(undefined),
   isMsixbundleCliInstalled: vi.fn().mockResolvedValue(true),
   getMsixbundleCliVersion: vi.fn().mockResolvedValue('1.0.0'),
   isVersionSufficient: vi.fn().mockReturnValue(true),
   MIN_MSIXBUNDLE_CLI_VERSION: '1.0.0',
   promptInstall: vi.fn().mockResolvedValue(false),
+  resolveBundledMsixbundleCliPath: vi.fn().mockReturnValue(null),
+  resolveMsixbundleCliCommand: vi.fn().mockReturnValue('msixbundle-cli'),
 }));
 
 import { build } from '../src/commands/build.js';
 import { generateManifestTemplate } from '../src/core/manifest.js';
 import {
   execAsync,
+  spawnAsync,
   execWithProgress,
   isMsixbundleCliInstalled,
   getMsixbundleCliVersion,
   isVersionSufficient,
   promptInstall,
+  resolveBundledMsixbundleCliPath,
 } from '../src/utils/exec.js';
 
 describe('build command', () => {
@@ -45,8 +50,10 @@ describe('build command', () => {
     vi.mocked(getMsixbundleCliVersion).mockResolvedValue('1.0.0');
     vi.mocked(isVersionSufficient).mockReturnValue(true);
     vi.mocked(execAsync).mockResolvedValue({ stdout: '', stderr: '' });
+    vi.mocked(spawnAsync).mockResolvedValue({ stdout: '', stderr: '' });
     vi.mocked(execWithProgress).mockResolvedValue(undefined);
     vi.mocked(promptInstall).mockResolvedValue(false);
+    vi.mocked(resolveBundledMsixbundleCliPath).mockReturnValue(null);
   });
 
   afterEach(() => {
@@ -346,7 +353,10 @@ describe('build command', () => {
     }
 
     process.chdir(originalCwd);
-    expect(execAsync).toHaveBeenCalledWith(expect.stringContaining('--pfx'));
+    expect(spawnAsync).toHaveBeenCalledWith(
+      'msixbundle-cli',
+      expect.arrayContaining(['--pfx', '/path/to/cert.pfx'])
+    );
   });
 
   it('uses certificate thumbprint from tauri config', async () => {
@@ -375,14 +385,17 @@ describe('build command', () => {
     }
 
     process.chdir(originalCwd);
-    expect(execAsync).toHaveBeenCalledWith(expect.stringContaining('--thumbprint'));
+    expect(spawnAsync).toHaveBeenCalledWith(
+      'msixbundle-cli',
+      expect.arrayContaining(['--thumbprint', 'ABC123'])
+    );
   });
 
   it('handles msixbundle-cli failure', async () => {
     createFullProject();
 
-    // Mock: msixbundle-cli fails (execAsync is used for msixbundle-cli)
-    vi.mocked(execAsync).mockRejectedValueOnce(new Error('msixbundle-cli failed'));
+    // Mock: msixbundle-cli (spawned) fails
+    vi.mocked(spawnAsync).mockRejectedValueOnce(new Error('msixbundle-cli failed'));
 
     const originalCwd = process.cwd();
     process.chdir(tempDir);
@@ -725,8 +738,10 @@ describe('build command', () => {
     process.chdir(originalCwd);
     process.env.MSIX_PFX_PASSWORD = originalEnv;
 
-    expect(execAsync).toHaveBeenCalledWith(expect.stringContaining('--pfx-password'));
-    expect(execAsync).toHaveBeenCalledWith(expect.stringContaining('env-secret'));
+    expect(spawnAsync).toHaveBeenCalledWith(
+      'msixbundle-cli',
+      expect.arrayContaining(['--pfx-password', 'env-secret'])
+    );
   });
 
   it('uses pfx without password when no password provided', async () => {
@@ -762,8 +777,12 @@ describe('build command', () => {
     process.env.MSIX_PFX_PASSWORD = originalEnv;
 
     // Should have --pfx but NOT --pfx-password
-    expect(execAsync).toHaveBeenCalledWith(expect.stringContaining('--pfx'));
-    expect(execAsync).not.toHaveBeenCalledWith(expect.stringContaining('--pfx-password'));
+    const cliCalls = vi.mocked(spawnAsync).mock.calls.filter(([cmd]) => cmd === 'msixbundle-cli');
+    expect(cliCalls.length).toBeGreaterThan(0);
+    for (const [, args] of cliCalls) {
+      expect(args).toContain('--pfx');
+      expect(args).not.toContain('--pfx-password');
+    }
   });
 
   it('passes --makepri when resourceIndex is enabled', async () => {
@@ -782,8 +801,6 @@ describe('build command', () => {
       })
     );
 
-    vi.mocked(execAsync).mockResolvedValueOnce({ stdout: '', stderr: '' });
-
     const originalCwd = process.cwd();
     process.chdir(tempDir);
 
@@ -795,15 +812,16 @@ describe('build command', () => {
 
     process.chdir(originalCwd);
 
-    const commands = vi.mocked(execAsync).mock.calls.map(([command]) => command);
+    const cliCalls = vi.mocked(spawnAsync).mock.calls.filter(([cmd]) => cmd === 'msixbundle-cli');
     expect(
-      commands.some(
-        (command) =>
-          typeof command === 'string' &&
-          command.startsWith('msixbundle-cli --force') &&
-          command.includes('--makepri') &&
-          command.includes('--makepri-default-language en-us')
-      )
+      cliCalls.some(([, args]) => {
+        const joined = args.join(' ');
+        return (
+          args[0] === '--force' &&
+          joined.includes('--makepri') &&
+          joined.includes('--makepri-default-language en-us')
+        );
+      })
     ).toBe(true);
   });
 
@@ -823,8 +841,6 @@ describe('build command', () => {
       })
     );
 
-    vi.mocked(execAsync).mockResolvedValueOnce({ stdout: '', stderr: '' });
-
     const originalCwd = process.cwd();
     process.chdir(tempDir);
 
@@ -836,7 +852,10 @@ describe('build command', () => {
 
     process.chdir(originalCwd);
 
-    expect(execAsync).toHaveBeenCalledWith(expect.stringContaining('--makepri-keep-config'));
+    expect(spawnAsync).toHaveBeenCalledWith(
+      'msixbundle-cli',
+      expect.arrayContaining(['--makepri-keep-config'])
+    );
   });
 
   it('builds normally with resourceIndex enabled', async () => {
@@ -854,8 +873,6 @@ describe('build command', () => {
       })
     );
 
-    vi.mocked(execAsync).mockResolvedValueOnce({ stdout: '', stderr: '' });
-
     const originalCwd = process.cwd();
     process.chdir(tempDir);
 
@@ -867,13 +884,19 @@ describe('build command', () => {
 
     process.chdir(originalCwd);
 
-    expect(execAsync).toHaveBeenCalledWith(expect.stringContaining('--makepri'));
+    expect(spawnAsync).toHaveBeenCalledWith(
+      'msixbundle-cli',
+      expect.arrayContaining(['--makepri'])
+    );
     expect(processExitSpy).not.toHaveBeenCalledWith(1);
   });
 
   it('outputs msixbundle-cli stdout when present', async () => {
     createFullProject();
-    vi.mocked(execAsync).mockResolvedValueOnce({ stdout: 'MSIX created successfully', stderr: '' });
+    vi.mocked(spawnAsync).mockResolvedValueOnce({
+      stdout: 'MSIX created successfully',
+      stderr: '',
+    });
 
     const originalCwd = process.cwd();
     process.chdir(tempDir);

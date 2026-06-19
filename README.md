@@ -18,7 +18,6 @@ MSIX packaging tool for Tauri apps - create Windows Store ready bundles with mul
 ## Prerequisites
 
 - [Rust](https://rustup.rs/) with Windows targets
-- [msixbundle-cli](https://github.com/Choochmeque/msixbundle-rs) (auto-installed on first build)
 - Windows SDK (for signing)
 
 ```bash
@@ -26,6 +25,12 @@ MSIX packaging tool for Tauri apps - create Windows Store ready bundles with mul
 rustup target add x86_64-pc-windows-msvc
 rustup target add aarch64-pc-windows-msvc
 ```
+
+### Bundled `msixbundle-cli`
+
+On Windows (x64 and arm64) the [`msixbundle-cli`](https://github.com/Choochmeque/msixbundle-rs) binary is shipped automatically as an `optionalDependencies` sidecar ([`@choochmeque/msixbundle-cli-win32`](https://www.npmjs.com/package/@choochmeque/msixbundle-cli-win32)) — no separate install is needed.
+
+If you're on macOS or Linux (e.g. cross-compiling), or if you installed with `--omit=optional` (npm) / `--no-optional` (pnpm/yarn), the build command falls back to whatever `msixbundle-cli` is on your `PATH` and prompts to `cargo install msixbundle-cli` if it's missing.
 
 ## Installation
 
@@ -426,8 +431,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Install msixbundle-cli
-        run: cargo install msixbundle-cli
+      # On Windows runners the @choochmeque/msixbundle-cli-win32 sidecar is
+      # installed automatically via optionalDependencies. On non-Windows runners
+      # (or with --no-optional) install it explicitly:
+      #   - run: cargo install msixbundle-cli
 
       - name: Build MSIX bundle
         run: pnpm tauri:windows:build --arch x64,arm64 --runner pnpm

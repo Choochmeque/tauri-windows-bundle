@@ -1,8 +1,31 @@
 import { exec, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import * as readline from 'node:readline';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { createRequire } from 'node:module';
 
 const execPromise = promisify(exec);
+
+const SIDECAR_PACKAGE = '@choochmeque/msixbundle-cli-win32';
+
+export function resolveBundledMsixbundleCliPath(): string | null {
+  if (process.platform !== 'win32') return null;
+  if (process.arch !== 'x64' && process.arch !== 'arm64') return null;
+
+  try {
+    const require = createRequire(import.meta.url);
+    const pkgJson = require.resolve(`${SIDECAR_PACKAGE}/package.json`);
+    const binPath = path.join(path.dirname(pkgJson), 'bin', process.arch, 'msixbundle-cli.exe');
+    return fs.existsSync(binPath) ? binPath : null;
+  } catch {
+    return null;
+  }
+}
+
+export function resolveMsixbundleCliCommand(): string {
+  return resolveBundledMsixbundleCliPath() ?? 'msixbundle-cli';
+}
 
 const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
@@ -57,9 +80,32 @@ export async function execAsync(
   return { stdout: result.stdout, stderr: result.stderr };
 }
 
+export async function spawnAsync(
+  command: string,
+  args: string[],
+  options?: { cwd?: string }
+): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd: options?.cwd,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: false,
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout?.on('data', (d: Buffer) => (stdout += d.toString()));
+    child.stderr?.on('data', (d: Buffer) => (stderr += d.toString()));
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code === 0) resolve({ stdout, stderr });
+      else reject(new Error(`${command} exited with code ${code}\n${stderr}`));
+    });
+  });
+}
+
 export async function isMsixbundleCliInstalled(): Promise<boolean> {
   try {
-    await execAsync('msixbundle-cli --version');
+    await spawnAsync(resolveMsixbundleCliCommand(), ['--version']);
     return true;
   } catch {
     return false;
@@ -68,7 +114,7 @@ export async function isMsixbundleCliInstalled(): Promise<boolean> {
 
 export async function getMsixbundleCliVersion(): Promise<string | null> {
   try {
-    const result = await execAsync('msixbundle-cli --version');
+    const result = await spawnAsync(resolveMsixbundleCliCommand(), ['--version']);
     // Output format: "msixbundle-cli 1.0.0" or just "1.0.0"
     const match = result.stdout.trim().match(/(\d+\.\d+\.\d+)/);
     return match ? match[1] : null;
@@ -89,7 +135,7 @@ export function isVersionSufficient(version: string, minVersion: string): boolea
   return patch >= minPatch;
 }
 
-export const MIN_MSIXBUNDLE_CLI_VERSION = '1.1.4';
+export const MIN_MSIXBUNDLE_CLI_VERSION = '1.1.11';
 
 export async function promptInstall(message: string): Promise<boolean> {
   const rl = readline.createInterface({
