@@ -54,6 +54,10 @@ importers:
       vitest:
         specifier: ^4.1.5
         version: 4.1.5(@types/node@25.9.3)(@vitest/coverage-v8@4.1.5)(vite@7.3.1(@types/node@25.9.3))
+    optionalDependencies:
+      '@choochmeque/msixbundle-cli-win32':
+        specifier: ^1.1.11
+        version: 1.1.11
 
 packages:
 
@@ -77,6 +81,10 @@ packages:
   '@bcoe/v8-coverage@1.0.2':
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
+
+  '@choochmeque/msixbundle-cli-win32@1.1.11':
+    resolution: {integrity: sha512-eT6hnDzYxTflsil/zhf5FNdHC3ip8JPr+Itgh9ULI2KdD3YhWd9PVeRRC5BFHZUKHHsOqW2SVcRvsU3rcfpqiQ==}
+    os: [win32]
 
   '@esbuild/aix-ppc64@0.27.7':
     resolution: {integrity: sha512-EKX3Qwmhz1eMdEJokhALr0YiD0lhQNwDqkPYyPhiSwKrh7/4KRjQc04sZ8db+5DVVnZ1LmbNDI1uAMPEUBnQPg==}
@@ -1311,6 +1319,9 @@ snapshots:
       '@babel/helper-validator-identifier': 7.28.5
 
   '@bcoe/v8-coverage@1.0.2': {}
+
+  '@choochmeque/msixbundle-cli-win32@1.1.11':
+    optional: true
 
   '@esbuild/aix-ppc64@0.27.7':
     optional: true
