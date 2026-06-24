@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { BuildOptions, MergedConfig } from '../types.js';
 import { DEFAULT_MIN_WINDOWS_VERSION, DEFAULT_RUNNER, validateCapabilities } from '../types.js';
@@ -16,6 +17,7 @@ import { prepareAppxContent, resolveCargoTargetDir } from '../core/appx-content.
 import { generateAssets } from '../generators/assets.js';
 import {
   spawnAsync,
+  execAsync,
   execWithProgress,
   isMsixbundleCliInstalled,
   getMsixbundleCliVersion,
@@ -26,6 +28,60 @@ import {
   resolveMsixbundleCliCommand,
 } from '../utils/exec.js';
 import { getDefaultLanguageFromManifestFile, resolveExecutableName } from '../core/manifest.js';
+
+/**
+ * Generate a single merged `resources.pri` per appx directory that contains ALL
+ * languages and scales.
+ *
+ * By default `makepri` (driven by the `<packaging>` section of the generated
+ * priconfig) splits non-default languages and scales into separate
+ * resource-package indexes (`resources.language-*.pri`, `resources.scale-*.pri`).
+ * Those split indexes are only consumed for resource packages declared inside a
+ * bundle; a standalone `.msix` loads only the main `resources.pri`. As a result,
+ * localized manifest values such as `ms-resource:Resources/PackageDisplayName`
+ * silently fall back to the default language (e.g. the app name stays English on
+ * a Chinese system).
+ *
+ * To avoid that we strip the `<packaging>` section from the priconfig so
+ * `makepri` merges every language and scale into one `resources.pri`. This runs
+ * `makepri` directly (resolved from PATH), so the build must happen from a
+ * "Developer Command Prompt for VS".
+ */
+async function generateMergedResourceIndex(
+  appxDirs: { arch: string; dir: string }[],
+  defaultLanguage: string
+): Promise<void> {
+  for (const { arch, dir } of appxDirs) {
+    const priconfig = path.join(dir, '..', `priconfig-${arch}.xml`);
+    const manifest = path.join(dir, 'AppxManifest.xml');
+    const pri = path.join(dir, 'resources.pri');
+
+    // Remove any stale PRI files (including previously split ones) so makepri
+    // does not pick them up as inputs.
+    for (const entry of fs.readdirSync(dir)) {
+      if (/^resources.*\.pri$/i.test(entry)) {
+        fs.rmSync(path.join(dir, entry), { force: true });
+      }
+    }
+
+    try {
+      await execAsync(
+        `makepri createconfig /cf "${priconfig}" /dq ${defaultLanguage} /pv 10.0.0 /o`
+      );
+      const config = fs
+        .readFileSync(priconfig, 'utf-8')
+        .replace(/<packaging>[\s\S]*?<\/packaging>/i, '');
+      fs.writeFileSync(priconfig, config);
+      await execAsync(`makepri new /pr . /cf "${priconfig}" /mn "${manifest}" /of "${pri}" /o`, {
+        cwd: dir,
+      });
+    } finally {
+      // The priconfig lives outside the appx dir, so it is never packaged; just
+      // clean it up regardless of success.
+      fs.rmSync(priconfig, { force: true });
+    }
+  }
+}
 
 export async function build(options: BuildOptions): Promise<void> {
   console.log('Building MSIX package...\n');
@@ -235,18 +291,24 @@ export async function build(options: BuildOptions): Promise<void> {
     ...appxDirs.flatMap(({ arch, dir }) => [`--dir-${arch}`, dir]),
   ];
 
-  // Resource index generation (resources.pri)
+  // Resource index generation (resources.pri).
+  // We build a single merged PRI ourselves (all languages + scales) instead of
+  // delegating to msixbundle-cli's `--makepri`, which splits non-default
+  // languages into resource-package indexes that a standalone .msix never loads
+  // (breaking localized DisplayName). See generateMergedResourceIndex above.
   if (bundleConfig.resourceIndex?.enabled) {
-    const defaultLanguage = getDefaultLanguageFromManifestFile(
-      path.join(appxDirs[0].dir, 'AppxManifest.xml')
-    );
+    const defaultLanguage =
+      getDefaultLanguageFromManifestFile(path.join(appxDirs[0].dir, 'AppxManifest.xml')) ?? 'en-US';
 
-    args.push('--makepri');
-    if (defaultLanguage) {
-      args.push('--makepri-default-language', defaultLanguage);
-    }
-    if (bundleConfig.resourceIndex.keepConfig) {
-      args.push('--makepri-keep-config');
+    console.log('  Generating merged resource index (resources.pri)...');
+    try {
+      await generateMergedResourceIndex(appxDirs, defaultLanguage);
+    } catch (error) {
+      console.error(
+        'Failed to generate resources.pri with makepri. Build from a "Developer Command Prompt for VS" so makepri.exe is on PATH.'
+      );
+      console.error(error);
+      process.exit(1);
     }
   }
 
