@@ -11,6 +11,7 @@ import {
   toFourPartVersion,
 } from '../core/project-discovery.js';
 import { jsonMergePatch } from '../utils/merge.js';
+import { mergeFileAssociations } from '../core/file-associations.js';
 import { prepareAppxContent, resolveCargoTargetDir } from '../core/appx-content.js';
 import { generateAssets } from '../generators/assets.js';
 import {
@@ -131,6 +132,17 @@ export async function build(options: BuildOptions): Promise<void> {
     publisher,
     publisherDisplayName,
   };
+
+  // Fold file associations declared in tauri.conf.json into the Windows config
+  // so they can live in a single source of truth (matching tauri-macos-xcode).
+  // bundle.config.json entries still win on name collision.
+  const fileAssociations = mergeFileAssociations(
+    tauriConfig.bundle?.fileAssociations,
+    bundleConfig.extensions?.fileAssociations
+  );
+  if (fileAssociations.length > 0) {
+    config.extensions = { ...config.extensions, fileAssociations };
+  }
 
   // Regenerate Assets from tauriConfig.bundle.icon when requested.
   // Overwrites manual edits in `gen/windows/Assets/`.

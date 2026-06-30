@@ -8,10 +8,27 @@ export interface TauriConfig {
     longDescription?: string;
     publisher?: string;
     resources?: (string | { src: string; target: string })[] | Record<string, string>;
+    fileAssociations?: TauriFileAssociation[];
     windows?: {
       certificateThumbprint?: string;
     };
   };
+}
+
+/**
+ * A `bundle.fileAssociations` entry as declared in tauri.conf.json (Tauri's own
+ * schema). Mapped to the MSIX-oriented {@link FileAssociation} during a build so
+ * associations can be declared once in tauri.conf.json instead of duplicated in
+ * bundle.config.json. Windows-only fields (mimeType/role/rank) are accepted for
+ * schema parity but unused on Windows.
+ */
+export interface TauriFileAssociation {
+  ext: string[];
+  name?: string;
+  description?: string;
+  mimeType?: string;
+  role?: string;
+  rank?: string;
 }
 
 export interface CapabilitiesConfig {

@@ -53,6 +53,7 @@ npx @choochmeque/tauri-windows-bundle init
 ```
 
 This creates:
+
 - `src-tauri/gen/windows/bundle.config.json` - MSIX-specific configuration
 - `src-tauri/gen/windows/AppxManifest.xml.template` - Manifest template
 - `src-tauri/gen/windows/Assets/` - Icons (copied from `src-tauri/icons/` or placeholders)
@@ -84,13 +85,13 @@ Pass one or more flags to `init` to also generate the suffixed asset variants Wi
 npx @choochmeque/tauri-windows-bundle init --all-variants
 ```
 
-| Flag | Files generated |
-|---|---|
-| `--scale` | `<asset>.scale-100/125/150/200/400.png` for StoreLogo, Square44x44Logo, Square150x150Logo |
-| `--target-size` | `Square44x44Logo.targetsize-16/24/32/48/256.png` (taskbar, Start list, jump lists) |
-| `--unplated` | `Square44x44Logo.targetsize-N_altform-unplated.png` (transparent background) |
-| `--light-unplated` | `Square44x44Logo.targetsize-N_altform-lightunplated.png` (light theme) |
-| `--all-variants` | All of the above |
+| Flag               | Files generated                                                                           |
+| ------------------ | ----------------------------------------------------------------------------------------- |
+| `--scale`          | `<asset>.scale-100/125/150/200/400.png` for StoreLogo, Square44x44Logo, Square150x150Logo |
+| `--target-size`    | `Square44x44Logo.targetsize-16/24/32/48/256.png` (taskbar, Start list, jump lists)        |
+| `--unplated`       | `Square44x44Logo.targetsize-N_altform-unplated.png` (transparent background)              |
+| `--light-unplated` | `Square44x44Logo.targetsize-N_altform-lightunplated.png` (light theme)                    |
+| `--all-variants`   | All of the above                                                                          |
 
 Variants are sourced from the highest-resolution Tauri icon found, in this order: `src-tauri/icons/icon.png` → `Square310x310Logo.png` → `128x128.png`. If none are present, variant generation is skipped with a warning.
 
@@ -143,6 +144,7 @@ Note: `runFullTrust` is always auto-added (required for Tauri apps).
 `resourceIndex.keepConfig` keeps generated `priconfig.xml` in each `AppxContent` directory for debugging.
 
 **Auto-read from tauri.conf.json / tauri.windows.conf.json:**
+
 - `displayName` ← `productName`
 - `version` ← `version` (auto-converted to 4-part: `1.0.0` → `1.0.0.0`)
 - `description` ← `bundle.shortDescription`
@@ -242,6 +244,22 @@ Extension types:
 npx @choochmeque/tauri-windows-bundle extension add file-association
 # Prompts for: name, extensions, description
 ```
+
+Alternatively, declare file associations in `tauri.conf.json` under the standard
+`bundle.fileAssociations` key and they are picked up automatically at build time:
+
+```jsonc
+{
+  "bundle": {
+    "fileAssociations": [
+      { "ext": ["ics"], "name": "iCalendar", "description": "iCalendar event file" },
+    ],
+  },
+}
+```
+
+`bundle.config.json` entries are merged on top and win on a name collision, so
+existing Windows-only overrides keep working.
 
 ### Protocol Handlers
 
@@ -400,6 +418,7 @@ npx @choochmeque/tauri-windows-bundle extension remove autoplay open
 ```
 
 Set password via environment variable:
+
 ```bash
 export MSIX_PFX_PASSWORD=your-password
 ```
@@ -407,6 +426,7 @@ export MSIX_PFX_PASSWORD=your-password
 ### Option 2: Windows Certificate Store
 
 Use thumbprint from `tauri.conf.json`:
+
 ```json
 {
   "bundle": {

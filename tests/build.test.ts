@@ -233,6 +233,44 @@ describe('build command', () => {
     );
   });
 
+  it('includes file associations declared in tauri.conf.json in the manifest', async () => {
+    createFullProject();
+    // Declare the association only in tauri.conf.json (single source of truth);
+    // bundle.config.json carries no fileAssociations.
+    fs.writeFileSync(
+      path.join(tempDir, 'src-tauri', 'tauri.conf.json'),
+      JSON.stringify({
+        productName: 'TestApp',
+        version: '1.0.0',
+        identifier: 'com.example.testapp',
+        bundle: {
+          fileAssociations: [
+            { ext: ['ics'], name: 'iCalendar', description: 'iCalendar event file' },
+          ],
+        },
+      })
+    );
+
+    const originalCwd = process.cwd();
+    process.chdir(tempDir);
+
+    try {
+      await build({});
+    } catch {
+      // Build proceeds past the mocked cargo/msix steps; ignore any late failure.
+    }
+
+    process.chdir(originalCwd);
+
+    const manifest = fs.readFileSync(
+      path.join(tempDir, 'src-tauri', 'target', 'appx', 'x64', 'AppxManifest.xml'),
+      'utf-8'
+    );
+    expect(manifest).toContain('windows.fileTypeAssociation');
+    expect(manifest).toContain('Name="iCalendar"');
+    expect(manifest).toContain('<uap:FileType>.ics</uap:FileType>');
+  });
+
   it('builds for arm64 architecture when specified', async () => {
     // Create arm64 build output
     createFullProject();
