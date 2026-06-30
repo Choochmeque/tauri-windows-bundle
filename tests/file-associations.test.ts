@@ -2,15 +2,28 @@ import { describe, it, expect } from 'vitest';
 import { mergeFileAssociations } from '../src/core/file-associations.js';
 
 describe('mergeFileAssociations', () => {
-  it('maps tauri.conf.json entries to the MSIX shape and adds leading dots', () => {
+  it('maps tauri.conf.json entries to the MSIX shape, adds leading dots, and lowercases the name', () => {
     const result = mergeFileAssociations(
       [{ ext: ['ics'], name: 'iCalendar', description: 'iCalendar event file' }],
       undefined
     );
 
     expect(result).toEqual([
-      { name: 'iCalendar', extensions: ['.ics'], description: 'iCalendar event file' },
+      { name: 'icalendar', extensions: ['.ics'], description: 'iCalendar event file' },
     ]);
+  });
+
+  it('normalizes names to a valid MSIX identifier (lowercase, no spaces, <= 64 chars)', () => {
+    const result = mergeFileAssociations(
+      [
+        { ext: ['a'], name: 'My Cool Type!' },
+        { ext: ['b'], name: 'X'.repeat(100) },
+        { ext: ['c'], name: '!!!' },
+      ],
+      undefined
+    );
+
+    expect(result.map((a) => a.name)).toEqual(['mycooltype', 'x'.repeat(64), 'fileassociation']);
   });
 
   it('preserves extensions that already have a leading dot', () => {
@@ -22,7 +35,7 @@ describe('mergeFileAssociations', () => {
   it('falls back to the first extension when no name is given', () => {
     const result = mergeFileAssociations([{ ext: ['ics'] }], undefined);
 
-    expect(result[0].name).toBe('.ics');
+    expect(result[0].name).toBe('ics');
   });
 
   it('skips tauri entries with no extensions', () => {
@@ -47,7 +60,7 @@ describe('mergeFileAssociations', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({
-      name: 'iCalendar',
+      name: 'icalendar',
       extensions: ['.ics', '.ical'],
       description: 'from bundle.config.json',
     });
@@ -60,7 +73,7 @@ describe('mergeFileAssociations', () => {
     );
 
     expect(result).toHaveLength(2);
-    expect(result.map((a) => a.name)).toEqual(['iCalendar', 'myfiles']);
+    expect(result.map((a) => a.name)).toEqual(['icalendar', 'myfiles']);
   });
 
   it('returns an empty array when both sources are empty', () => {

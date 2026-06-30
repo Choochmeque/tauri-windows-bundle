@@ -267,7 +267,9 @@ describe('build command', () => {
       'utf-8'
     );
     expect(manifest).toContain('windows.fileTypeAssociation');
-    expect(manifest).toContain('Name="iCalendar"');
+    // MSIX requires the FileTypeAssociation Name to be all-lowercase; the tool
+    // normalizes the tauri.conf.json display name (`iCalendar`) accordingly.
+    expect(manifest).toContain('Name="icalendar"');
     expect(manifest).toContain('<uap:FileType>.ics</uap:FileType>');
   });
 
