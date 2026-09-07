@@ -8,6 +8,7 @@ export interface TauriConfig {
     longDescription?: string;
     publisher?: string;
     resources?: (string | { src: string; target: string })[] | Record<string, string>;
+    externalBin?: string[];
     fileAssociations?: TauriFileAssociation[];
     windows?: {
       certificateThumbprint?: string;
