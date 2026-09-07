@@ -3,10 +3,12 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import {
+  executableName,
   generateManifest,
   generateManifestTemplate,
   getDefaultLanguageFromManifestXml,
   getDefaultLanguageFromManifestFile,
+  resolveExecutableName,
 } from '../src/core/manifest.js';
 import type { MergedConfig } from '../src/types.js';
 
@@ -454,5 +456,74 @@ describe('getDefaultLanguageFromManifest', () => {
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('resolveExecutableName (#103)', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'twb-exe-name-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('prefers the explicit executableName and appends .exe when missing', () => {
+    expect(resolveExecutableName('custom', {}, tempDir)).toBe('custom.exe');
+    expect(resolveExecutableName('custom.exe', {}, tempDir)).toBe('custom.exe');
+  });
+
+  it('uses tauri.conf.json mainBinaryName next', () => {
+    expect(resolveExecutableName(undefined, { mainBinaryName: 'main-bin' }, tempDir)).toBe(
+      'main-bin.exe'
+    );
+  });
+
+  it('falls back to the first [[bin]] name in Cargo.toml', () => {
+    fs.writeFileSync(
+      path.join(tempDir, 'Cargo.toml'),
+      '[package]\nname = "my-app"\n\n[[bin]]\nname = "custom_bin"\npath = "src/main.rs"\n'
+    );
+    expect(resolveExecutableName(undefined, {}, tempDir)).toBe('custom_bin.exe');
+  });
+
+  it('falls back to the Cargo package name when no [[bin]] exists', () => {
+    fs.writeFileSync(
+      path.join(tempDir, 'Cargo.toml'),
+      '[package]\nname = "my_app"\nversion = "0.1.0"\n\n[dependencies]\nname-like = "1"\n'
+    );
+    expect(resolveExecutableName(undefined, {}, tempDir)).toBe('my_app.exe');
+  });
+
+  it('returns undefined without Cargo.toml so the displayName guess applies', () => {
+    expect(resolveExecutableName(undefined, {}, tempDir)).toBeUndefined();
+  });
+
+  it('executableName() uses the resolved name over the displayName guess', () => {
+    expect(executableName({ displayName: 'My APP', executableName: 'my_app.exe' })).toBe(
+      'my_app.exe'
+    );
+    expect(executableName({ displayName: 'My APP' })).toBe('MyAPP.exe');
+  });
+});
+
+describe('readCargoBinName quoting (via resolveExecutableName)', () => {
+  it('accepts single-quoted TOML names', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'twb-toml-'));
+    fs.writeFileSync(path.join(dir, 'Cargo.toml'), "[package]\nname = 'sq_app'\n");
+    expect(resolveExecutableName(undefined, {}, dir)).toBe('sq_app.exe');
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('ignores name keys in unrelated sections', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'twb-toml-'));
+    fs.writeFileSync(
+      path.join(dir, 'Cargo.toml'),
+      '[package.metadata.foo]\nname = "not-it"\n\n[package]\nname = "real_app"\n'
+    );
+    expect(resolveExecutableName(undefined, {}, dir)).toBe('real_app.exe');
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 });

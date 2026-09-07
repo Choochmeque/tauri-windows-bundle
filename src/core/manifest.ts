@@ -53,13 +53,62 @@ export function generateManifestTemplate(windowsDir: string): void {
 }
 
 /**
- * Canonical exe filename derived from `displayName`. Used as the binary's name
- * in the packaged appx root and as the `Executable=` attribute on the main
- * `<Application>` block plus any extension that references the same binary
- * (e.g. `com:ExeServer`, `uap3:Extension Category="windows.appExecutionAlias"`).
+ * Canonical exe filename. Used as the binary's name in the packaged appx root
+ * and as the `Executable=` attribute on the main `<Application>` block plus any
+ * extension that references the same binary (e.g. `com:ExeServer`,
+ * `uap3:Extension Category="windows.appExecutionAlias"`).
+ *
+ * `config.executableName` (resolved once per build by {@link resolveExecutableName})
+ * wins; the historical displayName-derived guess remains only as the last resort.
  */
-export function executableName(config: Pick<MergedConfig, 'displayName'>): string {
+export function executableName(
+  config: Pick<MergedConfig, 'displayName' | 'executableName'>
+): string {
+  if (config.executableName) return config.executableName;
   return `${config.displayName.replace(/\s+/g, '')}.exe`;
+}
+
+/**
+ * Resolves the real name of the binary `tauri build` produced. Tauri v2 does
+ * not rename binaries to the product name: the artifact is the Cargo bin name
+ * unless `mainBinaryName` overrides it. Order: explicit `executableName` in
+ * bundle.config.json → `mainBinaryName` in tauri.conf.json → the first
+ * `[[bin]]` name (else `[package]` name) from src-tauri/Cargo.toml →
+ * undefined, letting {@link executableName} fall back to the displayName guess.
+ */
+export function resolveExecutableName(
+  explicit: string | undefined,
+  tauriConfig: { mainBinaryName?: string },
+  srcTauriDir: string
+): string | undefined {
+  if (explicit) return explicit.toLowerCase().endsWith('.exe') ? explicit : `${explicit}.exe`;
+  if (tauriConfig.mainBinaryName) return `${tauriConfig.mainBinaryName}.exe`;
+  const cargoName = readCargoBinName(srcTauriDir);
+  return cargoName ? `${cargoName}.exe` : undefined;
+}
+
+// Line-oriented, not a full TOML parser: a `[bin]`-looking line inside a
+// multiline string would be misread. Cargo manifests in practice never carry
+// those; both quote styles for `name` are handled.
+function readCargoBinName(srcTauriDir: string): string | undefined {
+  const cargoToml = path.join(srcTauriDir, 'Cargo.toml');
+  if (!fs.existsSync(cargoToml)) return undefined;
+  const lines = fs.readFileSync(cargoToml, 'utf8').split(/\r?\n/);
+  let section = '';
+  let packageName: string | undefined;
+  for (const line of lines) {
+    const header = line.match(/^\s*\[+\s*([^\]]+?)\s*\]+/);
+    if (header) {
+      section = header[1];
+      continue;
+    }
+    const name = line.match(/^\s*name\s*=\s*(?:"([^"]+)"|'([^']+)')/);
+    if (!name) continue;
+    const value = name[1] ?? name[2];
+    if (section === 'bin') return value;
+    if (section === 'package' && packageName === undefined) packageName = value;
+  }
+  return packageName;
 }
 
 export function generateManifest(

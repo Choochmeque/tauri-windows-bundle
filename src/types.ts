@@ -1,5 +1,6 @@
 export interface TauriConfig {
   productName?: string;
+  mainBinaryName?: string;
   version?: string;
   identifier?: string;
   bundle?: {
@@ -41,6 +42,8 @@ export interface CapabilitiesConfig {
 export interface BundleConfig {
   publisher?: string;
   publisherDisplayName?: string;
+  /** Explicit main executable filename (with or without .exe); overrides every derivation. */
+  executableName?: string;
   resourceIndex?: {
     enabled?: boolean;
     keepConfig?: boolean;
