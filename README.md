@@ -88,7 +88,7 @@ npx @choochmeque/tauri-windows-bundle init --all-variants
 | Flag               | Files generated                                                                           |
 | ------------------ | ----------------------------------------------------------------------------------------- |
 | `--scale`          | `<asset>.scale-100/125/150/200/400.png` for StoreLogo, Square44x44Logo, Square150x150Logo |
-| `--target-size`    | `Square44x44Logo.targetsize-16/24/32/48/256.png` (taskbar, Start list, jump lists)        |
+| `--target-size`    | `Square44x44Logo.targetsize-16/20/24/30/32/36/40/48/60/64/72/80/96/256.png` (taskbar, Start list, jump lists)        |
 | `--unplated`       | `Square44x44Logo.targetsize-N_altform-unplated.png` (transparent background)              |
 | `--light-unplated` | `Square44x44Logo.targetsize-N_altform-lightunplated.png` (light theme)                    |
 | `--all-variants`   | All of the above                                                                          |
@@ -194,7 +194,7 @@ target/msix/
 npx @choochmeque/tauri-windows-bundle init [options]
   -p, --path <path>    Path to Tauri project
   --scale              Generate .scale-100/125/150/200/400 PNG variants
-  --target-size        Generate .targetsize-16/24/32/48/256 PNG variants for Square44x44Logo
+  --target-size        Generate .targetsize-16/20/24/30/32/36/40/48/60/64/72/80/96/256 PNG variants for Square44x44Logo
   --unplated           Generate _altform-unplated targetsize variants
   --light-unplated     Generate _altform-lightunplated targetsize variants
   --all-variants       Shortcut for all four variant families above
