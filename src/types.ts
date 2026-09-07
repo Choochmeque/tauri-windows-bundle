@@ -163,7 +163,11 @@ export interface VariantOptions {
 }
 
 export const SCALE_FACTORS = [100, 125, 150, 200, 400] as const;
-export const TARGET_SIZES = [16, 24, 32, 48, 256] as const;
+// Microsoft's full app-icon target-size matrix: taskbar/Start at 125-400% display
+// scale request 20/30/36/40/60/64/72/80/96px directly; anything absent gets
+// resampled from another size and can render jagged.
+// https://learn.microsoft.com/en-us/windows/apps/design/iconography/app-icon-construction
+export const TARGET_SIZES = [16, 20, 24, 30, 32, 36, 40, 48, 60, 64, 72, 80, 96, 256] as const;
 
 export interface BuildOptions {
   arch?: string;
@@ -188,7 +192,7 @@ export const MSIX_ASSETS: MsixAsset[] = [
   { name: 'StoreLogo.png', size: 50 },
   { name: 'Square44x44Logo.png', size: 44 },
   { name: 'Square150x150Logo.png', size: 150 },
-  { name: 'Wide310x150Logo.png', width: 310, height: 150, skipScaleVariants: true },
+  { name: 'Wide310x150Logo.png', width: 310, height: 150 },
 ];
 
 export const DEFAULT_MIN_WINDOWS_VERSION = '10.0.17763.0';
