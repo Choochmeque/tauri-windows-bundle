@@ -461,7 +461,14 @@ describe('bundled resources with parent-directory paths (#128)', () => {
     fs.writeFileSync(path.join(shared, 'a.txt'), 'x');
 
     const tauriConfig: TauriConfig = { bundle: { resources: ['../shared'] } };
-    const appxDir = prepareAppxContent(tempDir, 'x64', mockConfig, tauriConfig, '10.0.17763.0', windowsDir);
+    const appxDir = prepareAppxContent(
+      tempDir,
+      'x64',
+      mockConfig,
+      tauriConfig,
+      '10.0.17763.0',
+      windowsDir
+    );
 
     expect(fs.existsSync(path.join(appxDir, '_up_', 'shared', 'a.txt'))).toBe(true);
     // and nothing escaped to the sibling of the package root
@@ -473,7 +480,14 @@ describe('bundled resources with parent-directory paths (#128)', () => {
     fs.writeFileSync(rootFile, 'x');
 
     const tauriConfig: TauriConfig = { bundle: { resources: ['../root.txt'] } };
-    const appxDir = prepareAppxContent(tempDir, 'x64', mockConfig, tauriConfig, '10.0.17763.0', windowsDir);
+    const appxDir = prepareAppxContent(
+      tempDir,
+      'x64',
+      mockConfig,
+      tauriConfig,
+      '10.0.17763.0',
+      windowsDir
+    );
 
     expect(fs.existsSync(path.join(appxDir, '_up_', 'root.txt'))).toBe(true);
   });
@@ -525,7 +539,14 @@ describe('externalBin sidecars (#127)', () => {
     fs.writeFileSync(path.join(binDir, `mytool-${triple}.exe`), 'sidecar');
 
     const tauriConfig: TauriConfig = { bundle: { externalBin: ['binaries/mytool'] } };
-    const appxDir = prepareAppxContent(tempDir, 'x64', mockConfig, tauriConfig, '10.0.17763.0', windowsDir);
+    const appxDir = prepareAppxContent(
+      tempDir,
+      'x64',
+      mockConfig,
+      tauriConfig,
+      '10.0.17763.0',
+      windowsDir
+    );
 
     expect(fs.existsSync(path.join(appxDir, 'mytool.exe'))).toBe(true);
     expect(fs.existsSync(path.join(appxDir, `mytool-${triple}.exe`))).toBe(false);
@@ -546,7 +567,14 @@ describe('externalBin sidecars (#127)', () => {
     fs.writeFileSync(path.join(binDir, `two-${triple}.exe`), 'b');
 
     const tauriConfig: TauriConfig = { bundle: { externalBin: ['bin/*'] } };
-    const appxDir = prepareAppxContent(tempDir, 'x64', mockConfig, tauriConfig, '10.0.17763.0', windowsDir);
+    const appxDir = prepareAppxContent(
+      tempDir,
+      'x64',
+      mockConfig,
+      tauriConfig,
+      '10.0.17763.0',
+      windowsDir
+    );
 
     expect(fs.existsSync(path.join(appxDir, 'one.exe'))).toBe(true);
     expect(fs.existsSync(path.join(appxDir, 'two.exe'))).toBe(true);
@@ -619,7 +647,14 @@ describe('staging hardening (codex round)', () => {
     const tauriConfig: TauriConfig = {
       bundle: { externalBin: [path.join(outside, 'abs-tool')] },
     };
-    const appxDir = prepareAppxContent(tempDir, 'x64', mockConfig, tauriConfig, '10.0.17763.0', windowsDir);
+    const appxDir = prepareAppxContent(
+      tempDir,
+      'x64',
+      mockConfig,
+      tauriConfig,
+      '10.0.17763.0',
+      windowsDir
+    );
     expect(fs.existsSync(path.join(appxDir, 'abs-tool.exe'))).toBe(true);
     fs.rmSync(outside, { recursive: true, force: true });
   });

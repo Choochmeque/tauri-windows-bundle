@@ -64,7 +64,9 @@ export function prepareAppxContent(
   // Copy bundled resources from tauri.conf.json
   const resourceCount = copyBundledResources(projectRoot, appxDir, tauriConfig);
 
-  console.log(`Staged ${arch}: 1 executable, ${sidecarCount} sidecar(s), ${resourceCount} resource file(s)`);
+  console.log(
+    `Staged ${arch}: 1 executable, ${sidecarCount} sidecar(s), ${resourceCount} resource file(s)`
+  );
 
   return appxDir;
 }
