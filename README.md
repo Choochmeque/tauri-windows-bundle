@@ -119,6 +119,8 @@ Edit `src-tauri/gen/windows/bundle.config.json`:
 }
 ```
 
+`executableName` (optional) pins the exe filename when derivation is wrong. Without it the name resolves from `mainBinaryName` in tauri.conf.json, then the first `[[bin]]` (else `[package]`) name in src-tauri/Cargo.toml, and only as a last resort from the product name.
+
 `publisher` and `publisherDisplayName` are optional in `bundle.config.json`. If omitted, `publisher` falls back to `bundle.publisher` from `tauri.conf.json` or `tauri.windows.conf.json`. If `publisherDisplayName` is omitted, it defaults to the resolved `publisher` value.
 
 **Capabilities** are validated at build time. Three types are supported:
