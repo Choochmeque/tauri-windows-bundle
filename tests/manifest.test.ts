@@ -502,9 +502,9 @@ describe('resolveExecutableName (#103)', () => {
   });
 
   it('executableName() uses the resolved name over the displayName guess', () => {
-    expect(
-      executableName({ displayName: 'My APP', executableName: 'my_app.exe' })
-    ).toBe('my_app.exe');
+    expect(executableName({ displayName: 'My APP', executableName: 'my_app.exe' })).toBe(
+      'my_app.exe'
+    );
     expect(executableName({ displayName: 'My APP' })).toBe('MyAPP.exe');
   });
 });
