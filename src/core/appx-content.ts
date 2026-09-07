@@ -79,8 +79,13 @@ export function prepareAppxContent(
  * segments instead would put the files where the runtime never searches.
  */
 export function resourceRelpath(p: string): string {
-  const parts = p.split(/[\\/]+/).filter((c) => c !== '' && c !== '.');
-  return parts.map((c) => (c === '..' ? '_up_' : c)).join('/');
+  const absolute = path.isAbsolute(p) || /^[A-Za-z]:[\\/]/.test(p);
+  const parts = p
+    .replace(/^[A-Za-z]:/, '')
+    .split(/[\\/]+/)
+    .filter((c) => c !== '' && c !== '.');
+  const mapped = parts.map((c) => (c === '..' ? '_up_' : c));
+  return (absolute ? ['_root_', ...mapped] : mapped).join('/');
 }
 
 function assertInside(appxDir: string, dest: string, what: string): void {
@@ -169,7 +174,7 @@ function copyBundledResources(
     const files = matches.length > 0 ? matches : [src];
 
     for (const file of files) {
-      const absSrc = path.join(srcDir, file);
+      const absSrc = path.isAbsolute(file) ? file : path.join(srcDir, file);
       if (!fs.existsSync(absSrc)) {
         console.warn(`Warning: bundle.resources entry "${src}" matched nothing at ${absSrc}`);
         continue;

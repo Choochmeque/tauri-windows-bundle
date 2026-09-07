@@ -659,3 +659,14 @@ describe('staging hardening (codex round)', () => {
     fs.rmSync(outside, { recursive: true, force: true });
   });
 });
+
+describe('resource path mapping parity with tauri (_root_)', () => {
+  it('maps absolute resource paths under _root_', async () => {
+    const { resourceRelpath } = await import('../src/core/appx-content.js');
+    expect(resourceRelpath('../x')).toBe('_up_/x');
+    expect(resourceRelpath('../../x/y')).toBe('_up_/_up_/x/y');
+    expect(resourceRelpath('/opt/data/file.txt')).toBe('_root_/opt/data/file.txt');
+    expect(resourceRelpath('C:\\data\\file.txt')).toBe('_root_/data/file.txt');
+    expect(resourceRelpath('plain/dir')).toBe('plain/dir');
+  });
+});

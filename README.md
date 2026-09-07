@@ -150,7 +150,8 @@ Note: `runFullTrust` is always auto-added (required for Tauri apps).
 - `description` ← `bundle.shortDescription`
 - `publisher` ← `bundle.publisher` (fallback when not in bundle.config.json)
 - `icons` ← `bundle.icon`
-- `resources` ← `bundle.resources`
+- `resources` ← `bundle.resources` (array entries keep their layout; leading `../` maps to `_up_/` and an absolute root to `_root_/`, matching where Tauri's `resolveResource()` looks at runtime)
+- `externalBin` ← `bundle.externalBin` (sidecars staged beside the exe with the `-<target-triple>` suffix stripped; a missing declared sidecar fails the build)
 - `signing` ← `bundle.windows.certificateThumbprint`
 
 **Platform-specific config:** Values in `tauri.windows.conf.json` override `tauri.conf.json` using [JSON Merge Patch (RFC 7396)](https://datatracker.ietf.org/doc/html/rfc7396). This lets you define Windows-specific settings like `identifier`, `productName`, or `bundle.publisher` separately.
