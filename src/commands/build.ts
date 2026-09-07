@@ -25,7 +25,7 @@ import {
   resolveBundledMsixbundleCliPath,
   resolveMsixbundleCliCommand,
 } from '../utils/exec.js';
-import { getDefaultLanguageFromManifestFile } from '../core/manifest.js';
+import { getDefaultLanguageFromManifestFile, resolveExecutableName } from '../core/manifest.js';
 
 export async function build(options: BuildOptions): Promise<void> {
   console.log('Building MSIX package...\n');
@@ -132,6 +132,21 @@ export async function build(options: BuildOptions): Promise<void> {
     publisher,
     publisherDisplayName,
   };
+
+  // The exe is whatever `tauri build` produced (Cargo bin name unless
+  // mainBinaryName overrides it) — never the displayName.
+  config.executableName = resolveExecutableName(
+    config.executableName,
+    tauriConfig,
+    path.join(projectRoot, 'src-tauri')
+  );
+  if (!config.executableName) {
+    console.warn(
+      'Warning: could not determine the executable name from bundle.config.json (executableName), ' +
+        'tauri.conf.json (mainBinaryName) or src-tauri/Cargo.toml — guessing from productName. ' +
+        'Set one of those if the build fails with "Executable not found".'
+    );
+  }
 
   // Fold file associations declared in tauri.conf.json into the Windows config
   // so they can live in a single source of truth (matching tauri-macos-xcode).
