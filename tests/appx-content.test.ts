@@ -425,3 +425,202 @@ describe('prepareAppxContent', () => {
     expect(manifestContent).not.toContain('{{');
   });
 });
+
+describe('bundled resources with parent-directory paths (#128)', () => {
+  let tempDir: string;
+  let windowsDir: string;
+  let buildDir: string;
+
+  const mockConfig: MergedConfig = {
+    displayName: 'TestApp',
+    version: '1.0.0.0',
+    description: 'A test application',
+    identifier: 'com.example.testapp',
+    publisher: 'CN=TestCompany',
+    publisherDisplayName: 'Test Company',
+    capabilities: { general: ['internetClient'] },
+  };
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tauri-bundle-test-'));
+    windowsDir = path.join(tempDir, 'src-tauri', 'gen', 'windows');
+    fs.mkdirSync(windowsDir, { recursive: true });
+    generateManifestTemplate(windowsDir);
+    buildDir = path.join(tempDir, 'src-tauri', 'target', 'x86_64-pc-windows-msvc', 'release');
+    fs.mkdirSync(buildDir, { recursive: true });
+    fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('maps a "../" array resource to _up_/ inside the package root', () => {
+    const shared = path.join(tempDir, 'shared');
+    fs.mkdirSync(shared, { recursive: true });
+    fs.writeFileSync(path.join(shared, 'a.txt'), 'x');
+
+    const tauriConfig: TauriConfig = { bundle: { resources: ['../shared'] } };
+    const appxDir = prepareAppxContent(tempDir, 'x64', mockConfig, tauriConfig, '10.0.17763.0', windowsDir);
+
+    expect(fs.existsSync(path.join(appxDir, '_up_', 'shared', 'a.txt'))).toBe(true);
+    // and nothing escaped to the sibling of the package root
+    expect(fs.existsSync(path.join(appxDir, '..', 'shared'))).toBe(false);
+  });
+
+  it('maps multiple leading "../" segments to nested _up_/ directories', () => {
+    const rootFile = path.join(tempDir, 'root.txt');
+    fs.writeFileSync(rootFile, 'x');
+
+    const tauriConfig: TauriConfig = { bundle: { resources: ['../root.txt'] } };
+    const appxDir = prepareAppxContent(tempDir, 'x64', mockConfig, tauriConfig, '10.0.17763.0', windowsDir);
+
+    expect(fs.existsSync(path.join(appxDir, '_up_', 'root.txt'))).toBe(true);
+  });
+
+  it('rejects a map-form target that escapes the package root', () => {
+    const dataFile = path.join(tempDir, 'src-tauri', 'data.json');
+    fs.writeFileSync(dataFile, '{}');
+
+    const tauriConfig: TauriConfig = { bundle: { resources: { 'data.json': '../evil.json' } } };
+    expect(() =>
+      prepareAppxContent(tempDir, 'x64', mockConfig, tauriConfig, '10.0.17763.0', windowsDir)
+    ).toThrow(/outside the package root/);
+  });
+});
+
+describe('externalBin sidecars (#127)', () => {
+  let tempDir: string;
+  let windowsDir: string;
+
+  const mockConfig: MergedConfig = {
+    displayName: 'TestApp',
+    version: '1.0.0.0',
+    description: 'A test application',
+    identifier: 'com.example.testapp',
+    publisher: 'CN=TestCompany',
+    publisherDisplayName: 'Test Company',
+    capabilities: { general: ['internetClient'] },
+  };
+
+  const triple = 'x86_64-pc-windows-msvc';
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tauri-bundle-test-'));
+    windowsDir = path.join(tempDir, 'src-tauri', 'gen', 'windows');
+    fs.mkdirSync(windowsDir, { recursive: true });
+    generateManifestTemplate(windowsDir);
+    const buildDir = path.join(tempDir, 'src-tauri', 'target', triple, 'release');
+    fs.mkdirSync(buildDir, { recursive: true });
+    fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('copies a sidecar beside the exe without the target-triple suffix', () => {
+    const binDir = path.join(tempDir, 'src-tauri', 'binaries');
+    fs.mkdirSync(binDir, { recursive: true });
+    fs.writeFileSync(path.join(binDir, `mytool-${triple}.exe`), 'sidecar');
+
+    const tauriConfig: TauriConfig = { bundle: { externalBin: ['binaries/mytool'] } };
+    const appxDir = prepareAppxContent(tempDir, 'x64', mockConfig, tauriConfig, '10.0.17763.0', windowsDir);
+
+    expect(fs.existsSync(path.join(appxDir, 'mytool.exe'))).toBe(true);
+    expect(fs.existsSync(path.join(appxDir, `mytool-${triple}.exe`))).toBe(false);
+    expect(fs.existsSync(path.join(appxDir, 'binaries'))).toBe(false);
+  });
+
+  it('fails the build when a declared sidecar is missing', () => {
+    const tauriConfig: TauriConfig = { bundle: { externalBin: ['binaries/ghost'] } };
+    expect(() =>
+      prepareAppxContent(tempDir, 'x64', mockConfig, tauriConfig, '10.0.17763.0', windowsDir)
+    ).toThrow(/Sidecar not found: .*ghost-x86_64-pc-windows-msvc\.exe/);
+  });
+
+  it('expands * patterns the way the official bundler does', () => {
+    const binDir = path.join(tempDir, 'src-tauri', 'bin');
+    fs.mkdirSync(binDir, { recursive: true });
+    fs.writeFileSync(path.join(binDir, `one-${triple}.exe`), 'a');
+    fs.writeFileSync(path.join(binDir, `two-${triple}.exe`), 'b');
+
+    const tauriConfig: TauriConfig = { bundle: { externalBin: ['bin/*'] } };
+    const appxDir = prepareAppxContent(tempDir, 'x64', mockConfig, tauriConfig, '10.0.17763.0', windowsDir);
+
+    expect(fs.existsSync(path.join(appxDir, 'one.exe'))).toBe(true);
+    expect(fs.existsSync(path.join(appxDir, 'two.exe'))).toBe(true);
+  });
+
+  it('rejects a sidecar that would overwrite the main executable', () => {
+    const binDir = path.join(tempDir, 'src-tauri', 'binaries');
+    fs.mkdirSync(binDir, { recursive: true });
+    fs.writeFileSync(path.join(binDir, `TestApp-${triple}.exe`), 'impostor');
+
+    const tauriConfig: TauriConfig = { bundle: { externalBin: ['binaries/TestApp'] } };
+    expect(() =>
+      prepareAppxContent(tempDir, 'x64', mockConfig, tauriConfig, '10.0.17763.0', windowsDir)
+    ).toThrow(/collision/);
+  });
+});
+
+describe('staging hardening (codex round)', () => {
+  let tempDir: string;
+  let windowsDir: string;
+  const triple = 'x86_64-pc-windows-msvc';
+
+  const mockConfig: MergedConfig = {
+    displayName: 'TestApp',
+    version: '1.0.0.0',
+    description: 'A test application',
+    identifier: 'com.example.testapp',
+    publisher: 'CN=TestCompany',
+    publisherDisplayName: 'Test Company',
+    capabilities: { general: ['internetClient'] },
+  };
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tauri-bundle-test-'));
+    windowsDir = path.join(tempDir, 'src-tauri', 'gen', 'windows');
+    fs.mkdirSync(windowsDir, { recursive: true });
+    generateManifestTemplate(windowsDir);
+    const buildDir = path.join(tempDir, 'src-tauri', 'target', triple, 'release');
+    fs.mkdirSync(buildDir, { recursive: true });
+    fs.writeFileSync(path.join(buildDir, 'TestApp.exe'), 'mock exe');
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('rejects a backslash-traversal map target on any host', () => {
+    fs.writeFileSync(path.join(tempDir, 'src-tauri', 'data.json'), '{}');
+    const tauriConfig: TauriConfig = { bundle: { resources: { 'data.json': '..\\evil.json' } } };
+    expect(() =>
+      prepareAppxContent(tempDir, 'x64', mockConfig, tauriConfig, '10.0.17763.0', windowsDir)
+    ).toThrow(/outside the package root/);
+  });
+
+  it('rejects two sidecars that collide on the packaged name', () => {
+    for (const dir of ['a', 'b']) {
+      const d = path.join(tempDir, 'src-tauri', dir);
+      fs.mkdirSync(d, { recursive: true });
+      fs.writeFileSync(path.join(d, `tool-${triple}.exe`), dir);
+    }
+    const tauriConfig: TauriConfig = { bundle: { externalBin: ['a/tool', 'b/tool'] } };
+    expect(() =>
+      prepareAppxContent(tempDir, 'x64', mockConfig, tauriConfig, '10.0.17763.0', windowsDir)
+    ).toThrow(/collision/);
+  });
+
+  it('stages a sidecar declared with an absolute path', () => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'twb-abs-bin-'));
+    fs.writeFileSync(path.join(outside, `abs-tool-${triple}.exe`), 'x');
+    const tauriConfig: TauriConfig = {
+      bundle: { externalBin: [path.join(outside, 'abs-tool')] },
+    };
+    const appxDir = prepareAppxContent(tempDir, 'x64', mockConfig, tauriConfig, '10.0.17763.0', windowsDir);
+    expect(fs.existsSync(path.join(appxDir, 'abs-tool.exe'))).toBe(true);
+    fs.rmSync(outside, { recursive: true, force: true });
+  });
+});
