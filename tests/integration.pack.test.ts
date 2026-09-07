@@ -3,7 +3,6 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import * as zlib from 'node:zlib';
 import { Image, write } from 'image-js';
 import { prepareAppxContent } from '../src/core/appx-content.js';
 import { resolveMsixbundleCliCommand } from '../src/utils/exec.js';
@@ -14,77 +13,44 @@ import type { MergedConfig, TauriConfig } from '../src/types.js';
 
 /**
  * True-artifact integration test: stages a fixture app, packs it with the REAL
- * msixbundle-cli, then parses the produced bundle's zip structure and asserts
- * what actually shipped. No mocks anywhere on that path.
+ * msixbundle-cli (the win32 npm sidecar on CI), then unpacks the result with
+ * Microsoft's own makeappx.exe — which validates the package structure and
+ * block-map hashes while extracting — and asserts what actually shipped.
+ * No mocks anywhere on that path.
  *
- * Skips (visibly) when msixbundle-cli is not installed; CI installs it.
+ * Runs on Windows with the SDK present (CI: windows-latest). Elsewhere it
+ * skips with a visible warning; with TWB_REQUIRE_INTEGRATION=1 a missing
+ * prerequisite fails the run instead.
  */
 
 const cliCommand = resolveMsixbundleCliCommand();
 const cliAvailable = spawnSync(cliCommand, ['--version'], { encoding: 'utf8' }).status === 0;
-// On the dedicated CI job a missing cli must fail loudly, never skip.
-if (process.env.TWB_REQUIRE_INTEGRATION === '1' && !cliAvailable) {
-  throw new Error(`TWB_REQUIRE_INTEGRATION is set but "${cliCommand}" is not runnable`);
-}
 
-// --- Minimal zip reader -----------------------------------------------------
-// A .msixbundle is a zip of .msix files; a .msix is a zip of the package
-// content. Entries are read from the central directory (the authoritative
-// index per APPNOTE.TXT); deflate/store payloads are supported.
-
-interface ZipEntry {
-  name: string;
-  compressedSize: number;
-  uncompressedSize: number;
-  method: number;
-  localHeaderOffset: number;
-}
-
-function readZipEntries(buf: Buffer): ZipEntry[] {
-  // End of central directory record: scan back for its signature.
-  let eocd = -1;
-  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 22 - 65535); i--) {
-    if (buf.readUInt32LE(i) === 0x06054b50) {
-      eocd = i;
-      break;
-    }
+function findMakeAppx(): string | null {
+  if (process.platform !== 'win32') return null;
+  const kitsBin = 'C:\\Program Files (x86)\\Windows Kits\\10\\bin';
+  if (!fs.existsSync(kitsBin)) return null;
+  const versions = fs
+    .readdirSync(kitsBin)
+    .filter((d) => /^10\.\d+/.test(d))
+    .sort()
+    .reverse();
+  for (const v of versions) {
+    const candidate = path.join(kitsBin, v, 'x64', 'makeappx.exe');
+    if (fs.existsSync(candidate)) return candidate;
   }
-  if (eocd < 0) throw new Error('not a zip: no end-of-central-directory record');
-  const count = buf.readUInt16LE(eocd + 10);
-  let offset = buf.readUInt32LE(eocd + 16);
-
-  const entries: ZipEntry[] = [];
-  for (let i = 0; i < count; i++) {
-    if (buf.readUInt32LE(offset) !== 0x02014b50) {
-      throw new Error(`bad central directory entry at ${offset}`);
-    }
-    const method = buf.readUInt16LE(offset + 10);
-    const compressedSize = buf.readUInt32LE(offset + 20);
-    const uncompressedSize = buf.readUInt32LE(offset + 24);
-    const nameLen = buf.readUInt16LE(offset + 28);
-    const extraLen = buf.readUInt16LE(offset + 30);
-    const commentLen = buf.readUInt16LE(offset + 32);
-    const localHeaderOffset = buf.readUInt32LE(offset + 42);
-    const name = buf.subarray(offset + 46, offset + 46 + nameLen).toString('utf8');
-    entries.push({ name, compressedSize, uncompressedSize, method, localHeaderOffset });
-    offset += 46 + nameLen + extraLen + commentLen;
-  }
-  return entries;
+  return null;
 }
 
-function readZipEntryData(buf: Buffer, entry: ZipEntry): Buffer {
-  const lh = entry.localHeaderOffset;
-  if (buf.readUInt32LE(lh) !== 0x04034b50) throw new Error(`bad local header for ${entry.name}`);
-  const nameLen = buf.readUInt16LE(lh + 26);
-  const extraLen = buf.readUInt16LE(lh + 28);
-  const start = lh + 30 + nameLen + extraLen;
-  const raw = buf.subarray(start, start + entry.compressedSize);
-  if (entry.method === 0) return Buffer.from(raw);
-  if (entry.method === 8) return zlib.inflateRawSync(raw);
-  throw new Error(`unsupported compression method ${entry.method} for ${entry.name}`);
-}
+const makeAppx = findMakeAppx();
+const ready = cliAvailable && makeAppx !== null;
 
-// --- Fixture ----------------------------------------------------------------
+if (process.env.TWB_REQUIRE_INTEGRATION === '1' && !ready) {
+  throw new Error(
+    `TWB_REQUIRE_INTEGRATION is set but prerequisites are missing: ` +
+      `msixbundle-cli runnable=${cliAvailable} (via "${cliCommand}"), makeappx=${makeAppx ?? 'not found'}`
+  );
+}
 
 const triple = 'x86_64-pc-windows-msvc';
 
@@ -98,12 +64,9 @@ const mockConfig: MergedConfig = {
   capabilities: { general: ['internetClient'] },
 };
 
-describe.runIf(cliAvailable)('msix artifact contents (real msixbundle-cli)', () => {
+describe.runIf(ready)('msix artifact contents (msixbundle-cli + makeappx)', () => {
   let tempDir: string;
-  let bundlePath: string;
-  let outerEntries: ZipEntry[];
-  let innerBuf: Buffer;
-  let innerEntries: ZipEntry[];
+  let unpackDir: string;
 
   beforeAll(async () => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'twb-integration-'));
@@ -153,85 +116,97 @@ describe.runIf(cliAvailable)('msix artifact contents (real msixbundle-cli)', () 
       windowsDir
     );
 
+    // Pack with the real cli; it produces both the per-arch .msix and the bundle
     const outDir = path.join(tempDir, 'msix-out');
-    const result = spawnSync(cliCommand, ['--force', '--out-dir', outDir, '--dir-x64', appxDir], {
+    const pack = spawnSync(cliCommand, ['--force', '--out-dir', outDir, '--dir-x64', appxDir], {
       encoding: 'utf8',
     });
-    expect(result.status, `msixbundle-cli failed:\n${result.stdout}\n${result.stderr}`).toBe(0);
+    expect(pack.status, `msixbundle-cli failed:\n${pack.stdout}\n${pack.stderr}`).toBe(0);
 
-    const produced = fs.readdirSync(outDir).filter((f) => /\.(msixbundle|msix)$/i.test(f));
-    expect(produced.length, `expected one artifact in ${outDir}, got: ${produced.join(', ')}`).toBe(
-      1
+    const produced = fs.readdirSync(outDir);
+    const bundle = produced.find((f) => f.toLowerCase().endsWith('.msixbundle'));
+    const msix = produced.find((f) => f.toLowerCase().endsWith('.msix'));
+    expect(bundle, `no .msixbundle in ${outDir}: ${produced.join(', ')}`).toBeDefined();
+    expect(msix, `no .msix in ${outDir}: ${produced.join(', ')}`).toBeDefined();
+
+    // Unbundle with Microsoft's tool, then unpack the inner package.
+    // makeappx validates the block map and file hashes while extracting.
+    const unbundleDir = path.join(tempDir, 'unbundled');
+    const unbundle = spawnSync(
+      makeAppx as string,
+      ['unbundle', '/p', path.join(outDir, bundle as string), '/d', unbundleDir],
+      { encoding: 'utf8' }
     );
-    bundlePath = path.join(outDir, produced[0]);
+    expect(
+      unbundle.status,
+      `makeappx unbundle failed:\n${unbundle.stdout}\n${unbundle.stderr}`
+    ).toBe(0);
+    const innerMsix = fs.readdirSync(unbundleDir).find((f) => f.toLowerCase().endsWith('.msix'));
+    expect(innerMsix, 'bundle contains no .msix').toBeDefined();
 
-    const outerBuf = fs.readFileSync(bundlePath);
-    outerEntries = readZipEntries(outerBuf);
-    if (bundlePath.toLowerCase().endsWith('.msixbundle')) {
-      const inner = outerEntries.find((e) => e.name.toLowerCase().endsWith('.msix'));
-      expect(inner, 'bundle contains no .msix').toBeDefined();
-      innerBuf = readZipEntryData(outerBuf, inner as ZipEntry);
-    } else {
-      innerBuf = outerBuf;
-    }
-    innerEntries = readZipEntries(innerBuf);
-  }, 120000);
+    unpackDir = path.join(tempDir, 'unpacked');
+    const unpack = spawnSync(
+      makeAppx as string,
+      ['unpack', '/p', path.join(unbundleDir, innerMsix as string), '/d', unpackDir],
+      { encoding: 'utf8' }
+    );
+    expect(unpack.status, `makeappx unpack failed:\n${unpack.stdout}\n${unpack.stderr}`).toBe(0);
+  }, 180000);
 
   afterAll(() => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
   it('ships the main executable and the sidecar without the triple suffix', () => {
-    const names = innerEntries.map((e) => e.name);
-    expect(names).toContain('TestApp.exe');
-    expect(names).toContain('helper.exe');
-    expect(names.some((n) => n.includes(triple))).toBe(false);
+    expect(fs.existsSync(path.join(unpackDir, 'TestApp.exe'))).toBe(true);
+    expect(fs.existsSync(path.join(unpackDir, 'helper.exe'))).toBe(true);
+    const everything = fs.readdirSync(unpackDir, { recursive: true }) as string[];
+    expect(everything.some((n) => n.includes(triple))).toBe(false);
   });
 
   it('ships parent-path resources under _up_/ and map resources at their target', () => {
-    const names = innerEntries.map((e) => e.name);
-    expect(names).toContain('_up_/shared/catalog.json');
-    expect(names).toContain('docs/notes.txt');
-    expect(names.some((n) => n.includes('..'))).toBe(false);
+    expect(fs.existsSync(path.join(unpackDir, '_up_', 'shared', 'catalog.json'))).toBe(true);
+    expect(fs.readFileSync(path.join(unpackDir, 'docs', 'notes.txt'), 'utf8')).toBe(
+      'mapped resource'
+    );
   });
 
   it('ships every declared icon variant with real image bytes', () => {
-    const names = innerEntries.map((e) => e.name);
+    const assets = path.join(unpackDir, 'Assets');
     for (const size of TARGET_SIZES) {
-      expect(names).toContain(`Assets/Square44x44Logo.targetsize-${size}.png`);
-      expect(names).toContain(`Assets/Square44x44Logo.targetsize-${size}_altform-unplated.png`);
-      expect(names).toContain(
-        `Assets/Square44x44Logo.targetsize-${size}_altform-lightunplated.png`
-      );
+      expect(fs.existsSync(path.join(assets, `Square44x44Logo.targetsize-${size}.png`))).toBe(true);
+      expect(
+        fs.existsSync(path.join(assets, `Square44x44Logo.targetsize-${size}_altform-unplated.png`))
+      ).toBe(true);
+      expect(
+        fs.existsSync(
+          path.join(assets, `Square44x44Logo.targetsize-${size}_altform-lightunplated.png`)
+        )
+      ).toBe(true);
     }
     for (const factor of SCALE_FACTORS) {
-      expect(names).toContain(`Assets/Square150x150Logo.scale-${factor}.png`);
+      expect(fs.existsSync(path.join(assets, `Square150x150Logo.scale-${factor}.png`))).toBe(true);
     }
-    // Every shipped PNG carries a PNG signature after decompression
-    const png = innerEntries.find((e) => e.name === 'Assets/Square44x44Logo.targetsize-48.png');
-    const data = readZipEntryData(innerBuf, png as ZipEntry);
-    expect(data.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    const png = fs.readFileSync(path.join(assets, 'Square44x44Logo.targetsize-48.png'));
+    expect(png.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
   });
 
   it('declares the staged executable in the packaged AppxManifest.xml', () => {
-    const manifest = innerEntries.find((e) => e.name === 'AppxManifest.xml');
-    expect(manifest).toBeDefined();
-    const xml = readZipEntryData(innerBuf, manifest as ZipEntry).toString('utf8');
+    const xml = fs.readFileSync(path.join(unpackDir, 'AppxManifest.xml'), 'utf8');
     expect(xml).toContain('Executable="TestApp.exe"');
     expect(xml).toContain('Publisher="CN=TestCompany"');
   });
 
-  it('shipped payload sizes match the staged files', () => {
-    const sidecar = innerEntries.find((e) => e.name === 'helper.exe') as ZipEntry;
-    expect(readZipEntryData(innerBuf, sidecar).toString('utf8')).toBe('MZ sidecar');
+  it('shipped payload bytes match the staged files', () => {
+    expect(fs.readFileSync(path.join(unpackDir, 'helper.exe'), 'utf8')).toBe('MZ sidecar');
   });
 });
 
-describe.runIf(!cliAvailable)('msix artifact contents (real msixbundle-cli)', () => {
-  it('SKIPPED: msixbundle-cli is not runnable here (win32 sidecar or PATH install) — artifact verification did not run', () => {
+describe.runIf(!ready)('msix artifact contents (msixbundle-cli + makeappx)', () => {
+  it('SKIPPED: prerequisites missing — artifact verification did not run', () => {
     console.warn(
-      'integration.pack.test.ts skipped: install msixbundle-cli (cargo install msixbundle-cli) to verify real package contents'
+      `integration.pack.test.ts skipped: msixbundle-cli runnable=${cliAvailable}, makeappx=${makeAppx ?? 'not found'} — runs on Windows with the SDK`
     );
-    expect(cliAvailable).toBe(false);
+    expect(ready).toBe(false);
   });
 });
