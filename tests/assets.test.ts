@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { generateAssets, resolveTauriIconsDir } from '../src/generators/assets.js';
-import { MSIX_ASSETS } from '../src/types.js';
+import { MSIX_ASSETS, TARGET_SIZES } from '../src/types.js';
 
 describe('generateAssets', () => {
   let tempDir: string;
@@ -332,13 +332,13 @@ describe('generateAssets variants', () => {
     expect(files.some((f) => f.includes('.targetsize-'))).toBe(false);
   });
 
-  it('generates scale variants for 3 assets x 5 factors (no wide, no LargeTile)', async () => {
+  it('generates scale variants for all 4 declared assets x 5 factors (no LargeTile)', async () => {
     fs.writeFileSync(path.join(iconsDir, 'icon.png'), createTestPng(310, 310));
     await generateAssets(tempDir, projectRoot, { scale: true });
 
     const assetsDir = path.join(tempDir, 'Assets');
     const factors = [100, 125, 150, 200, 400];
-    const bases = ['StoreLogo', 'Square44x44Logo', 'Square150x150Logo'];
+    const bases = ['StoreLogo', 'Square44x44Logo', 'Square150x150Logo', 'Wide310x150Logo'];
 
     for (const base of bases) {
       for (const f of factors) {
@@ -346,15 +346,16 @@ describe('generateAssets variants', () => {
       }
     }
 
-    // Wide tile and LargeTile must not be scaled
     const files = fs.readdirSync(assetsDir);
-    expect(files.some((f) => f.startsWith('Wide310x150Logo.scale-'))).toBe(false);
     expect(files.some((f) => f.startsWith('LargeTile.'))).toBe(false);
 
     // Spot-check dimensions
     const [w, h] = readIhdrWidthHeight(path.join(assetsDir, 'Square150x150Logo.scale-200.png'));
     expect(w).toBe(300);
     expect(h).toBe(300);
+    const [ww, wh] = readIhdrWidthHeight(path.join(assetsDir, 'Wide310x150Logo.scale-200.png'));
+    expect(ww).toBe(620);
+    expect(wh).toBe(300);
   });
 
   it('generates targetSize variants for Square44x44Logo only', async () => {
@@ -362,7 +363,7 @@ describe('generateAssets variants', () => {
     await generateAssets(tempDir, projectRoot, { targetSize: true });
 
     const assetsDir = path.join(tempDir, 'Assets');
-    for (const size of [16, 24, 32, 48, 256]) {
+    for (const size of TARGET_SIZES) {
       expect(fs.existsSync(path.join(assetsDir, `Square44x44Logo.targetsize-${size}.png`))).toBe(
         true
       );
@@ -378,7 +379,7 @@ describe('generateAssets variants', () => {
     await generateAssets(tempDir, projectRoot, { unplated: true, lightUnplated: true });
 
     const assetsDir = path.join(tempDir, 'Assets');
-    for (const size of [16, 24, 32, 48, 256]) {
+    for (const size of TARGET_SIZES) {
       expect(
         fs.existsSync(
           path.join(assetsDir, `Square44x44Logo.targetsize-${size}_altform-unplated.png`)

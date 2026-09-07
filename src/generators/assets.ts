@@ -90,6 +90,18 @@ export async function generateAssets(
       );
     } else {
       console.log(`  Generating variants from ${path.basename(sourcePath)}`);
+      try {
+        const probe = await read(sourcePath);
+        const largest = Math.max(...TARGET_SIZES);
+        if (Math.max(probe.width, probe.height) < largest) {
+          console.warn(
+            `    Warning: ${path.basename(sourcePath)} is ${probe.width}x${probe.height}; ` +
+              `variants up to ${largest}px will be upscaled and may look blurry — provide a ≥${largest}px source`
+          );
+        }
+      } catch {
+        // probing is best-effort; generation below reports real read failures
+      }
       if (variants.scale) {
         await generateScaleVariants(assetsDir, sourcePath);
         console.log('    Scale variants written');

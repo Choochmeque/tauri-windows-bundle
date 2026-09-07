@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   MSIX_ASSETS,
+  TARGET_SIZES,
   DEFAULT_MIN_WINDOWS_VERSION,
   DEFAULT_CAPABILITIES,
   GENERAL_CAPABILITIES,
@@ -39,9 +40,13 @@ describe('MSIX_ASSETS', () => {
     expect(wide?.height).toBe(150);
   });
 
-  it('marks Wide310x150Logo to skip scale variants', () => {
+  it('declares scale variants for Wide310x150Logo (the manifest references it)', () => {
     const wide = MSIX_ASSETS.find((a) => a.name === 'Wide310x150Logo.png');
-    expect(wide?.skipScaleVariants).toBe(true);
+    expect(wide?.skipScaleVariants).toBeUndefined();
+  });
+
+  it('covers the full Microsoft target-size matrix', () => {
+    expect([...TARGET_SIZES]).toEqual([16, 20, 24, 30, 32, 36, 40, 48, 60, 64, 72, 80, 96, 256]);
   });
 });
 
