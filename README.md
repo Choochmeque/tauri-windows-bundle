@@ -471,9 +471,16 @@ jobs:
           cache: 'pnpm'
 
       - name: Setup Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc, aarch64-pc-windows-msvc
+
+      # Caches the cargo registry and build artifacts; cuts warm build times
+      # to a fraction of the cold ones.
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
 
       - name: Install dependencies
         run: pnpm install
