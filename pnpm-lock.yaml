@@ -66,7 +66,7 @@ importers:
     optionalDependencies:
       '@choochmeque/msixbundle-cli-win32':
         specifier: ^1.1.11
-        version: 1.1.11
+        version: 1.1.15
 
 packages:
 
@@ -91,8 +91,8 @@ packages:
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
 
-  '@choochmeque/msixbundle-cli-win32@1.1.11':
-    resolution: {integrity: sha512-eT6hnDzYxTflsil/zhf5FNdHC3ip8JPr+Itgh9ULI2KdD3YhWd9PVeRRC5BFHZUKHHsOqW2SVcRvsU3rcfpqiQ==}
+  '@choochmeque/msixbundle-cli-win32@1.1.15':
+    resolution: {integrity: sha512-jnIkJ5S0yVWtOdYgboT+mA9/73fGzwAtL2AjzJAklf/OgRi7va6TKX+s1yPNsRAld3nMELk2XJeVPkw1sBnEGw==}
     os: [win32]
 
   '@esbuild/aix-ppc64@0.28.2':
@@ -1501,7 +1501,7 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@choochmeque/msixbundle-cli-win32@1.1.11':
+  '@choochmeque/msixbundle-cli-win32@1.1.15':
     optional: true
 
   '@esbuild/aix-ppc64@0.28.2':
