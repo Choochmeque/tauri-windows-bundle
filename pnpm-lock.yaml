@@ -766,8 +766,8 @@ packages:
   cheminfo-types@1.15.0:
     resolution: {integrity: sha512-shv45WN2u0yN9EHH1bisNrv+fy4Cw+eLM5lOoriP67mePrwbHZ1kJqg90C8GEU7K1A8gJsicEoVZHcuBbuul/w==}
 
-  colord@2.9.3:
-    resolution: {integrity: sha512-jeC1axXpnb0/2nn/Y1LPuLdgXBLH7aDcHu4KEKfqw3CUhX7ZpfBSlPKyqXE6btIgEzfWtrX3/tyBCaCvXvMkOw==}
+  colord@2.10.0:
+    resolution: {integrity: sha512-AidJptpBJmjTclAp9BkLwJi0T93fo5epJnbaZslpg6QVzpHjAiveF55mE9AcUJiGMqRHgMDY8soMsQtuNYMHfw==}
 
   commander@15.0.0:
     resolution: {integrity: sha512-z67u4ZhzCL/Tydu1lJARtEZYWbWaN7oYLHbsuzocr6y4N6WZAagG3RQ4FW61V1/0+jImpj293XfrcYnd1qxtPg==}
@@ -2063,7 +2063,7 @@ snapshots:
 
   cheminfo-types@1.15.0: {}
 
-  colord@2.9.3: {}
+  colord@2.10.0: {}
 
   commander@15.0.0: {}
 
@@ -2286,7 +2286,7 @@ snapshots:
   image-js@1.7.0:
     dependencies:
       bresenham-zingl: 0.2.5
-      colord: 2.9.3
+      colord: 2.10.0
       fast-bmp: 4.0.1
       fast-jpeg: 3.0.1
       fast-png: 8.0.0
