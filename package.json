@@ -1,6 +1,6 @@
 {
   "name": "@choochmeque/tauri-windows-bundle",
-  "version": "0.1.29",
+  "version": "0.2.0",
   "description": "MSIX packaging tool for Tauri apps - Windows Store ready bundles",
   "type": "module",
   "bin": {
