@@ -21,6 +21,17 @@ export async function init(options: InitOptions): Promise<void> {
   if (windowsConfig) {
     tauriConfig = jsonMergePatch(tauriConfig, windowsConfig);
   }
+  
+  if (options.config) {
+    const customConfigPath = path.resolve(projectRoot, options.config);
+    if (fs.existsSync(customConfigPath)) {
+      const content = fs.readFileSync(customConfigPath, 'utf-8');
+      const customConfig = JSON.parse(content);
+      tauriConfig = jsonMergePatch(tauriConfig, customConfig);
+    } else {
+      console.warn(`Warning: custom config file not found at ${customConfigPath}`);
+    }
+  }
   const windowsDir = getWindowsDir(projectRoot);
 
   const variants: VariantOptions = {
@@ -78,7 +89,7 @@ function updatePackageJson(projectRoot: string): void {
   const packageJsonPath = path.join(projectRoot, 'package.json');
 
   if (!fs.existsSync(packageJsonPath)) {
-    console.log('  Warning: package.json not found, skipping script update');
+    console.warn('  Warning: package.json not found, skipping script update');
     return;
   }
 
@@ -99,7 +110,7 @@ function updatePackageJson(projectRoot: string): void {
     fs.writeFileSync(packageJsonPath, JSON.stringify(pkg, null, 2) + '\n');
     console.log('  Updated package.json with devDependency and build script');
   } catch (error) {
-    console.log(
+    console.warn(
       `  Warning: Could not update package.json: ${error instanceof Error ? error.message : error}`
     );
   }

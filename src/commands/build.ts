@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { BuildOptions, MergedConfig } from '../types.js';
 import { DEFAULT_MIN_WINDOWS_VERSION, DEFAULT_RUNNER, validateCapabilities } from '../types.js';
@@ -94,6 +95,17 @@ export async function build(options: BuildOptions): Promise<void> {
   const windowsConfig = readTauriWindowsConfig(projectRoot);
   if (windowsConfig) {
     tauriConfig = jsonMergePatch(tauriConfig, windowsConfig);
+  }
+  
+  if (options.config) {
+    const customConfigPath = path.resolve(projectRoot, options.config);
+    if (fs.existsSync(customConfigPath)) {
+      const content = fs.readFileSync(customConfigPath, 'utf-8');
+      const customConfig = JSON.parse(content);
+      tauriConfig = jsonMergePatch(tauriConfig, customConfig);
+    } else {
+      console.warn(`Warning: custom config file not found at ${customConfigPath}`);
+    }
   }
   const bundleConfig = readBundleConfig(windowsDir);
 
