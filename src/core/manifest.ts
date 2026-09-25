@@ -187,7 +187,9 @@ function generateExtensions(config: MergedConfig): string {
     const taskId = config.extensions.startupTask.taskId || 'StartupTask';
     const result = replaceTemplateVariables(template, {
       TASK_ID: taskId,
+      ENABLED: String(config.extensions.startupTask.enabledByDefault ?? true),
       DISPLAY_NAME: config.displayName,
+      EXECUTABLE: executableName(config),
     });
     extensions.push(result.trimEnd());
   }

@@ -1,3 +1,3 @@
-      <desktop:Extension Category="windows.startupTask">
-        <desktop:StartupTask TaskId="{{TASK_ID}}" Enabled="true" DisplayName="{{DISPLAY_NAME}}" />
+      <desktop:Extension Category="windows.startupTask" Executable="{{EXECUTABLE}}" EntryPoint="Windows.FullTrustApplication">
+        <desktop:StartupTask TaskId="{{TASK_ID}}" Enabled="{{ENABLED}}" DisplayName="{{DISPLAY_NAME}}" />
       </desktop:Extension>

@@ -87,6 +87,11 @@ export interface ProtocolHandler {
 export interface StartupTask {
   enabled: boolean;
   taskId?: string;
+  /**
+   * Initial state of the task after install (`Enabled` attribute). Defaults to `true`.
+   * Set to `false` to let the app turn it on at runtime via the WinRT `StartupTask` API.
+   */
+  enabledByDefault?: boolean;
 }
 
 export interface ContextMenu {

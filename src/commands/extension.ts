@@ -308,7 +308,8 @@ export async function extensionEnableStartupTask(options: ExtensionOptions): Pro
     config.extensions = {};
   }
 
-  config.extensions.startupTask = { enabled: true };
+  // Keep taskId / enabledByDefault the user configured
+  config.extensions.startupTask = { ...config.extensions.startupTask, enabled: true };
 
   writeBundleConfig(windowsDir, config);
   console.log('\nStartup Task enabled. App will run on Windows login.');
@@ -323,7 +324,8 @@ export async function extensionDisableStartupTask(options: ExtensionOptions): Pr
     config.extensions = {};
   }
 
-  config.extensions.startupTask = { enabled: false };
+  // Keep taskId / enabledByDefault the user configured
+  config.extensions.startupTask = { ...config.extensions.startupTask, enabled: false };
 
   writeBundleConfig(windowsDir, config);
   console.log('\nStartup Task disabled.');
