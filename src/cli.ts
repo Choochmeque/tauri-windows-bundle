@@ -38,6 +38,7 @@ program
   .command('init')
   .description('Initialize Windows bundle configuration')
   .option('-p, --path <path>', 'Path to Tauri project')
+  .option('-c, --config <file>', 'JSON strings or paths to JSON, JSON5 or TOML files to merge with the default configuration file')
   .option('--scale', 'Generate .scale-100/125/150/200/400 variants for tiles')
   .option('--target-size', 'Generate .targetsize-16/24/32/48/256 variants for Square44x44Logo')
   .option('--unplated', 'Generate _altform-unplated targetsize variants')
@@ -59,6 +60,7 @@ program
   .option('--debug', 'Build in debug mode (release is default)')
   .option('--min-windows <version>', 'Minimum Windows version', '10.0.17763.0')
   .option('--runner <runner>', 'Build runner (cargo, pnpm, npm, yarn, etc.)', 'cargo')
+  .option('-c, --config <file>', 'JSON strings or paths to JSON, JSON5 or TOML files to merge with the default configuration file')
   .option('--verbose', 'Show full build output instead of spinner')
   .option(
     '--regenerate-assets',

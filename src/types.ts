@@ -148,6 +148,7 @@ export interface MergedConfig extends BundleConfig {
 
 export interface InitOptions {
   path?: string;
+  config?: string;
   scale?: boolean;
   targetSize?: boolean;
   unplated?: boolean;
@@ -171,6 +172,7 @@ export const TARGET_SIZES = [16, 20, 24, 30, 32, 36, 40, 48, 60, 64, 72, 80, 96,
 
 export interface BuildOptions {
   arch?: string;
+  config?: string;
   debug?: boolean;
   minWindows?: string;
   runner?: string;
