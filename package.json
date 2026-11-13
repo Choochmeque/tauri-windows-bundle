@@ -39,7 +39,7 @@
   ],
   "dependencies": {
     "commander": "^15.0.0",
-    "glob": "^13.0.6",
+    "glob": "^14.0.4",
     "image-js": "^1.6.0"
   },
   "optionalDependencies": {
