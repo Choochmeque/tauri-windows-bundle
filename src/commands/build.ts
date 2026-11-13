@@ -26,6 +26,7 @@ import {
   promptInstall,
   resolveBundledMsixbundleCliPath,
   resolveMsixbundleCliCommand,
+  resolveMakepriCommand,
 } from '../utils/exec.js';
 import { getDefaultLanguageFromManifestFile, resolveExecutableName } from '../core/manifest.js';
 
@@ -44,13 +45,14 @@ import { getDefaultLanguageFromManifestFile, resolveExecutableName } from '../co
  *
  * To avoid that we strip the `<packaging>` section from the priconfig so
  * `makepri` merges every language and scale into one `resources.pri`. This runs
- * `makepri` directly (resolved from PATH), so the build must happen from a
- * "Developer Command Prompt for VS".
+ * `makepri` directly, resolved from the installed Windows SDK (see
+ * `resolveMakepriPath`) or, failing that, from PATH.
  */
 async function generateMergedResourceIndex(
   appxDirs: { arch: string; dir: string }[],
   defaultLanguage: string
 ): Promise<void> {
+  const makepri = resolveMakepriCommand();
   for (const { arch, dir } of appxDirs) {
     const priconfig = path.join(dir, '..', `priconfig-${arch}.xml`);
     const manifest = path.join(dir, 'AppxManifest.xml');
@@ -66,13 +68,13 @@ async function generateMergedResourceIndex(
 
     try {
       await execAsync(
-        `makepri createconfig /cf "${priconfig}" /dq ${defaultLanguage} /pv 10.0.0 /o`
+        `${makepri} createconfig /cf "${priconfig}" /dq ${defaultLanguage} /pv 10.0.0 /o`
       );
       const config = fs
         .readFileSync(priconfig, 'utf-8')
         .replace(/<packaging>[\s\S]*?<\/packaging>/i, '');
       fs.writeFileSync(priconfig, config);
-      await execAsync(`makepri new /pr . /cf "${priconfig}" /mn "${manifest}" /of "${pri}" /o`, {
+      await execAsync(`${makepri} new /pr . /cf "${priconfig}" /mn "${manifest}" /of "${pri}" /o`, {
         cwd: dir,
       });
     } finally {
@@ -305,7 +307,7 @@ export async function build(options: BuildOptions): Promise<void> {
       await generateMergedResourceIndex(appxDirs, defaultLanguage);
     } catch (error) {
       console.error(
-        'Failed to generate resources.pri with makepri. Build from a "Developer Command Prompt for VS" so makepri.exe is on PATH.'
+        'Failed to generate resources.pri with makepri. Install the Windows SDK (it ships makepri.exe), or set MAKEPRI_PATH to the full path of makepri.exe.'
       );
       console.error(error);
       process.exit(1);

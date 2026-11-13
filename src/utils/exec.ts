@@ -27,6 +27,83 @@ export function resolveMsixbundleCliCommand(): string {
   return resolveBundledMsixbundleCliPath() ?? 'msixbundle-cli';
 }
 
+/**
+ * Default `Windows Kits\10\bin` directories where the Windows SDK installs
+ * `makepri.exe` (under `<sdk-version>\<arch>\`).
+ */
+function defaultWindowsSdkBinRoots(): string[] {
+  const roots = new Set<string>();
+  for (const base of [process.env['ProgramFiles(x86)'], process.env.ProgramFiles]) {
+    if (base) roots.add(path.join(base, 'Windows Kits', '10', 'bin'));
+  }
+  return [...roots];
+}
+
+function compareSdkVersionsDesc(a: string, b: string): number {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const diff = (pb[i] ?? 0) - (pa[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
+/**
+ * Locate `makepri.exe` in an installed Windows SDK so the build does not have to
+ * run from a "Developer Command Prompt for VS".
+ *
+ * Resolution order: `MAKEPRI_PATH` env var, `WindowsSdkVerBinPath` (set by the
+ * VS developer prompt), then the newest SDK under the standard `Windows Kits`
+ * install roots. Returns null when nothing is found (caller falls back to PATH).
+ */
+export function resolveMakepriPath(
+  sdkBinRoots: string[] = defaultWindowsSdkBinRoots()
+): string | null {
+  const override = process.env.MAKEPRI_PATH;
+  if (override && fs.existsSync(override)) return override;
+
+  if (process.platform !== 'win32') return null;
+
+  // Prefer a binary that runs natively on the host, then fall back to x86
+  // (which runs everywhere via emulation).
+  const archDirs = process.arch === 'arm64' ? ['arm64', 'x64', 'x86'] : ['x64', 'x86'];
+
+  const verBinPath = process.env.WindowsSdkVerBinPath;
+  if (verBinPath) {
+    for (const arch of archDirs) {
+      const candidate = path.join(verBinPath, arch, 'makepri.exe');
+      if (fs.existsSync(candidate)) return candidate;
+    }
+  }
+
+  for (const root of sdkBinRoots) {
+    let versions: string[];
+    try {
+      versions = fs
+        .readdirSync(root)
+        .filter((name) => /^\d+(\.\d+)*$/.test(name))
+        .sort(compareSdkVersionsDesc);
+    } catch {
+      continue;
+    }
+    for (const version of versions) {
+      for (const arch of archDirs) {
+        const candidate = path.join(root, version, arch, 'makepri.exe');
+        if (fs.existsSync(candidate)) return candidate;
+      }
+    }
+  }
+
+  return null;
+}
+
+/** Shell-ready `makepri` command: the SDK path (quoted) if found, else PATH lookup. */
+export function resolveMakepriCommand(): string {
+  const resolved = resolveMakepriPath();
+  return resolved ? `"${resolved}"` : 'makepri';
+}
+
 const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
 function isCiEnvironment(): boolean {

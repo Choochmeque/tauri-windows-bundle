@@ -15,6 +15,7 @@ vi.mock('../src/utils/exec.js', () => ({
   promptInstall: vi.fn().mockResolvedValue(false),
   resolveBundledMsixbundleCliPath: vi.fn().mockReturnValue(null),
   resolveMsixbundleCliCommand: vi.fn().mockReturnValue('msixbundle-cli'),
+  resolveMakepriCommand: vi.fn().mockReturnValue('makepri'),
 }));
 
 import { build } from '../src/commands/build.js';

@@ -40,9 +40,14 @@ import {
   promptInstall,
   resolveBundledMsixbundleCliPath,
   resolveMsixbundleCliCommand,
+  resolveMakepriPath,
+  resolveMakepriCommand,
   Spinner,
 } from '../src/utils/exec.js';
 import * as childProcess from 'node:child_process';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import * as readline from 'node:readline';
 
 // Get mock references
@@ -205,6 +210,108 @@ describe('resolveMsixbundleCliCommand', () => {
   it('falls back to "msixbundle-cli" when bundled is unavailable', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin' });
     expect(resolveMsixbundleCliCommand()).toBe('msixbundle-cli');
+  });
+});
+
+describe('resolveMakepriPath', () => {
+  const originalPlatform = process.platform;
+  const originalArch = process.arch;
+  const originalEnv = { ...process.env };
+  let tempDir: string;
+
+  function touch(...segments: string[]): string {
+    const file = path.join(tempDir, ...segments);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, '');
+    return file;
+  }
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'makepri-'));
+    delete process.env.MAKEPRI_PATH;
+    delete process.env.WindowsSdkVerBinPath;
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    Object.defineProperty(process, 'arch', { value: 'x64' });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+    process.env = { ...originalEnv };
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+    Object.defineProperty(process, 'arch', { value: originalArch });
+  });
+
+  it('honors MAKEPRI_PATH when it exists', () => {
+    const exe = touch('custom', 'makepri.exe');
+    process.env.MAKEPRI_PATH = exe;
+    expect(resolveMakepriPath([])).toBe(exe);
+  });
+
+  it('returns null on non-Windows without an override', () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    touch('bin', '10.0.22621.0', 'x64', 'makepri.exe');
+    expect(resolveMakepriPath([path.join(tempDir, 'bin')])).toBeNull();
+  });
+
+  it('uses WindowsSdkVerBinPath from a developer prompt', () => {
+    const exe = touch('devprompt', 'x64', 'makepri.exe');
+    process.env.WindowsSdkVerBinPath = path.join(tempDir, 'devprompt');
+    expect(resolveMakepriPath([])).toBe(exe);
+  });
+
+  it('picks the newest SDK version, comparing numerically', () => {
+    touch('bin', '10.0.9200.0', 'x64', 'makepri.exe');
+    const newest = touch('bin', '10.0.26100.0', 'x64', 'makepri.exe');
+    touch('bin', '10.0.19041.0', 'x64', 'makepri.exe');
+    fs.mkdirSync(path.join(tempDir, 'bin', 'x64'), { recursive: true });
+    expect(resolveMakepriPath([path.join(tempDir, 'bin')])).toBe(newest);
+  });
+
+  it('falls back to x86 and skips missing roots', () => {
+    const exe = touch('bin', '10.0.22621.0', 'x86', 'makepri.exe');
+    expect(resolveMakepriPath([path.join(tempDir, 'missing'), path.join(tempDir, 'bin')])).toBe(
+      exe
+    );
+  });
+
+  it('prefers arm64 on arm64 hosts', () => {
+    Object.defineProperty(process, 'arch', { value: 'arm64' });
+    touch('bin', '10.0.22621.0', 'x64', 'makepri.exe');
+    const exe = touch('bin', '10.0.22621.0', 'arm64', 'makepri.exe');
+    expect(resolveMakepriPath([path.join(tempDir, 'bin')])).toBe(exe);
+  });
+
+  it('returns null when no SDK has makepri', () => {
+    fs.mkdirSync(path.join(tempDir, 'bin', '10.0.22621.0', 'x64'), { recursive: true });
+    expect(resolveMakepriPath([path.join(tempDir, 'bin')])).toBeNull();
+  });
+});
+
+describe('resolveMakepriCommand', () => {
+  const originalPlatform = process.platform;
+  const originalEnv = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+    Object.defineProperty(process, 'platform', { value: originalPlatform });
+  });
+
+  it('falls back to "makepri" on PATH when nothing is found', () => {
+    delete process.env.MAKEPRI_PATH;
+    Object.defineProperty(process, 'platform', { value: 'darwin' });
+    expect(resolveMakepriCommand()).toBe('makepri');
+  });
+
+  it('quotes a resolved path so spaces survive the shell', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'makepri cmd-'));
+    const exe = path.join(dir, 'makepri.exe');
+    fs.writeFileSync(exe, '');
+    process.env.MAKEPRI_PATH = exe;
+    try {
+      expect(resolveMakepriCommand()).toBe(`"${exe}"`);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 
