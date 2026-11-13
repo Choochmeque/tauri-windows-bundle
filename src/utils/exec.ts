@@ -1,4 +1,4 @@
-import { exec, spawn } from 'node:child_process';
+import { exec, execFileSync, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import * as readline from 'node:readline';
 import * as fs from 'node:fs';
@@ -28,11 +28,33 @@ export function resolveMsixbundleCliCommand(): string {
 }
 
 /**
- * Default `Windows Kits\10\bin` directories where the Windows SDK installs
- * `makepri.exe` (under `<sdk-version>\<arch>\`).
+ * Read the Windows 10/11 SDK install root (`KitsRoot10`) from the registry, the
+ * same key msixbundle-cli uses to locate MakeAppx.exe.
+ */
+function readKitsRoot10FromRegistry(): string | null {
+  try {
+    const output = execFileSync(
+      'reg',
+      ['query', 'HKLM\\SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots', '/v', 'KitsRoot10'],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true }
+    );
+    const match = output.match(/KitsRoot10\s+REG_\w+\s+(.+)/);
+    return match ? match[1].trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `Windows Kits\10\bin` directories where the Windows SDK installs `makepri.exe`
+ * (under `<sdk-version>\<arch>\`): the registered SDK root first, then the
+ * default install locations.
  */
 function defaultWindowsSdkBinRoots(): string[] {
+  if (process.platform !== 'win32') return [];
   const roots = new Set<string>();
+  const kitsRoot = readKitsRoot10FromRegistry();
+  if (kitsRoot) roots.add(path.join(kitsRoot, 'bin'));
   for (const base of [process.env['ProgramFiles(x86)'], process.env.ProgramFiles]) {
     if (base) roots.add(path.join(base, 'Windows Kits', '10', 'bin'));
   }

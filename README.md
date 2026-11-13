@@ -95,7 +95,7 @@ npx @choochmeque/tauri-windows-bundle init --all-variants
 
 Variants are sourced from the highest-resolution Tauri icon found, in this order: `src-tauri/icons/icon.png` → `Square310x310Logo.png` → `128x128.png`. If none are present, variant generation is skipped with a warning.
 
-Passing any variant flag also flips `resourceIndex.enabled` to `true` in the generated `bundle.config.json`, because Windows only resolves suffixed assets through a `resources.pri` file built by `--makepri`.
+Passing any variant flag also flips `resourceIndex.enabled` to `true` in the generated `bundle.config.json`, because Windows only resolves suffixed assets through a `resources.pri` file.
 
 ### Configure
 
@@ -141,7 +141,9 @@ Edit `src-tauri/gen/windows/bundle.config.json`:
 
 Note: `runFullTrust` is always auto-added (required for Tauri apps).
 
-`resourceIndex.enabled` generates `resources.pri` via `msixbundle-cli --makepri` before packing. Enable this when using qualified assets (for example, scale-specific logos like `Square44x44Logo.scale-200.png`).
+`resourceIndex.enabled` generates `resources.pri` with `makepri.exe` before packing. Enable this when using qualified assets (for example, scale-specific logos like `Square44x44Logo.scale-200.png`) or localized manifest strings (`ms-resource:`). All languages and scales are merged into a single `resources.pri`, because a standalone `.msix` only loads the main index; split `resources.language-*.pri` files would make localized values such as the display name fall back to the default language.
+
+`makepri.exe` is taken from `MAKEPRI_PATH` if set, otherwise from the newest installed Windows SDK (found via the `KitsRoot10` registry key or the default `Windows Kits\10\bin` folders), and finally from `PATH`.
 
 `resourceIndex.keepConfig` keeps generated `priconfig.xml` in each `AppxContent` directory for debugging.
 

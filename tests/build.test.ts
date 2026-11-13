@@ -922,6 +922,41 @@ describe('build command', () => {
     expect(priconfigAtNew).not.toContain('<packaging>');
   });
 
+  it('keeps the merged priconfig.xml in AppxContent only when keepConfig is set', async () => {
+    for (const keepConfig of [true, false]) {
+      const projectDir = createFullProject();
+      const windowsDir = path.join(projectDir, 'src-tauri', 'gen', 'windows');
+      fs.writeFileSync(
+        path.join(windowsDir, 'bundle.config.json'),
+        JSON.stringify({
+          publisher: 'CN=TestCompany',
+          publisherDisplayName: 'Test Company',
+          capabilities: { general: ['internetClient'] },
+          resourceIndex: { enabled: true, keepConfig },
+        })
+      );
+
+      mockMakepri();
+
+      const originalCwd = process.cwd();
+      process.chdir(tempDir);
+
+      try {
+        await build({});
+      } catch {
+        // Expected
+      }
+
+      process.chdir(originalCwd);
+
+      const kept = path.join(projectDir, 'src-tauri', 'target', 'appx', 'x64', 'priconfig.xml');
+      expect(fs.existsSync(kept)).toBe(keepConfig);
+      if (keepConfig) {
+        expect(fs.readFileSync(kept, 'utf-8')).not.toContain('<packaging>');
+      }
+    }
+  });
+
   it('builds normally with resourceIndex enabled', async () => {
     const projectDir = createFullProject();
     const windowsDir = path.join(projectDir, 'src-tauri', 'gen', 'windows');

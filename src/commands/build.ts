@@ -50,7 +50,8 @@ import { getDefaultLanguageFromManifestFile, resolveExecutableName } from '../co
  */
 async function generateMergedResourceIndex(
   appxDirs: { arch: string; dir: string }[],
-  defaultLanguage: string
+  defaultLanguage: string,
+  keepConfig: boolean
 ): Promise<void> {
   const makepri = resolveMakepriCommand();
   for (const { arch, dir } of appxDirs) {
@@ -58,10 +59,10 @@ async function generateMergedResourceIndex(
     const manifest = path.join(dir, 'AppxManifest.xml');
     const pri = path.join(dir, 'resources.pri');
 
-    // Remove any stale PRI files (including previously split ones) so makepri
-    // does not pick them up as inputs.
+    // Remove stale PRI files (including previously split ones) and a kept
+    // priconfig.xml from an earlier build so makepri does not index them.
     for (const entry of fs.readdirSync(dir)) {
-      if (/^resources.*\.pri$/i.test(entry)) {
+      if (/^resources.*\.pri$/i.test(entry) || /^priconfig\.xml$/i.test(entry)) {
         fs.rmSync(path.join(dir, entry), { force: true });
       }
     }
@@ -77,9 +78,13 @@ async function generateMergedResourceIndex(
       await execAsync(`${makepri} new /pr . /cf "${priconfig}" /mn "${manifest}" /of "${pri}" /o`, {
         cwd: dir,
       });
+      if (keepConfig) {
+        // Copied in only after indexing so it is not itself a resource input.
+        fs.copyFileSync(priconfig, path.join(dir, 'priconfig.xml'));
+      }
     } finally {
-      // The priconfig lives outside the appx dir, so it is never packaged; just
-      // clean it up regardless of success.
+      // The working priconfig lives outside the appx dir so makepri never
+      // indexes it; clean it up regardless of success.
       fs.rmSync(priconfig, { force: true });
     }
   }
@@ -304,7 +309,11 @@ export async function build(options: BuildOptions): Promise<void> {
 
     console.log('  Generating merged resource index (resources.pri)...');
     try {
-      await generateMergedResourceIndex(appxDirs, defaultLanguage);
+      await generateMergedResourceIndex(
+        appxDirs,
+        defaultLanguage,
+        bundleConfig.resourceIndex.keepConfig ?? false
+      );
     } catch (error) {
       console.error(
         'Failed to generate resources.pri with makepri. Install the Windows SDK (it ships makepri.exe), or set MAKEPRI_PATH to the full path of makepri.exe.'

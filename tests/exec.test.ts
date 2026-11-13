@@ -6,9 +6,12 @@ type ExecCallback = (error: Error | null, result: { stdout: string; stderr: stri
 vi.mock('node:child_process', () => {
   const mockExec = vi.fn();
   const mockSpawn = vi.fn();
+  const mockExecFileSync = vi.fn();
   return {
     exec: mockExec,
+    execFileSync: mockExecFileSync,
     spawn: mockSpawn,
+    __mockExecFileSync: mockExecFileSync,
     __mockExec: mockExec,
     __mockSpawn: mockSpawn,
   };
@@ -54,6 +57,9 @@ import * as readline from 'node:readline';
 const mockExec = (childProcess as unknown as { __mockExec: ReturnType<typeof vi.fn> }).__mockExec;
 const mockSpawn = (childProcess as unknown as { __mockSpawn: ReturnType<typeof vi.fn> })
   .__mockSpawn;
+const mockExecFileSync = (
+  childProcess as unknown as { __mockExecFileSync: ReturnType<typeof vi.fn> }
+).__mockExecFileSync;
 const mockQuestion = (readline as unknown as { __mockQuestion: ReturnType<typeof vi.fn> })
   .__mockQuestion;
 const mockClose = (readline as unknown as { __mockClose: ReturnType<typeof vi.fn> }).__mockClose;
@@ -279,6 +285,32 @@ describe('resolveMakepriPath', () => {
     touch('bin', '10.0.22621.0', 'x64', 'makepri.exe');
     const exe = touch('bin', '10.0.22621.0', 'arm64', 'makepri.exe');
     expect(resolveMakepriPath([path.join(tempDir, 'bin')])).toBe(exe);
+  });
+
+  it('finds an SDK under the registered KitsRoot10', () => {
+    const kitsRoot = path.join(tempDir, 'D', 'Windows Kits', '10');
+    const exe = touch('D', 'Windows Kits', '10', 'bin', '10.0.22621.0', 'x64', 'makepri.exe');
+    process.env['ProgramFiles(x86)'] = path.join(tempDir, 'none');
+    delete process.env.ProgramFiles;
+    mockExecFileSync.mockReturnValueOnce(
+      `\r\nHKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots\r\n    KitsRoot10    REG_SZ    ${kitsRoot}${path.sep}\r\n\r\n`
+    );
+    expect(resolveMakepriPath()).toBe(exe);
+    expect(mockExecFileSync).toHaveBeenCalledWith(
+      'reg',
+      expect.arrayContaining(['KitsRoot10']),
+      expect.anything()
+    );
+  });
+
+  it('falls back to Program Files when the registry query fails', () => {
+    const exe = touch('pf86', 'Windows Kits', '10', 'bin', '10.0.22621.0', 'x64', 'makepri.exe');
+    process.env['ProgramFiles(x86)'] = path.join(tempDir, 'pf86');
+    delete process.env.ProgramFiles;
+    mockExecFileSync.mockImplementationOnce(() => {
+      throw new Error('reg failed');
+    });
+    expect(resolveMakepriPath()).toBe(exe);
   });
 
   it('returns null when no SDK has makepri', () => {
