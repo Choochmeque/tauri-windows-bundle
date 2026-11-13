@@ -293,6 +293,18 @@ npx @choochmeque/tauri-windows-bundle extension add startup-task
 npx @choochmeque/tauri-windows-bundle extension remove startup-task
 ```
 
+The task is enabled on install by default. To ship it disabled and let the app turn it on at runtime (for example from a settings toggle via the WinRT `StartupTask` API), set `enabledByDefault` to `false` in `bundle.config.json`:
+
+```json
+{
+  "extensions": {
+    "startupTask": { "enabled": true, "taskId": "MyAppStartup", "enabledByDefault": false }
+  }
+}
+```
+
+The app looks the task up with `StartupTask.GetAsync(taskId)`, so keep `taskId` in sync with your code.
+
 ### Context Menu
 
 Add right-click menu items in Windows Explorer.

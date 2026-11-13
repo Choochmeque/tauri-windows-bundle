@@ -190,6 +190,31 @@ describe('extension commands', () => {
       );
       expect(config.extensions.startupTask.enabled).toBe(false);
     });
+
+    it('keeps taskId and enabledByDefault', async () => {
+      const windowsDir = createProject();
+      fs.writeFileSync(
+        path.join(windowsDir, 'bundle.config.json'),
+        JSON.stringify({
+          publisher: 'CN=Test',
+          publisherDisplayName: 'Test',
+          extensions: {
+            startupTask: { enabled: true, taskId: 'MyTask', enabledByDefault: false },
+          },
+        })
+      );
+
+      await extensionDisableStartupTask({ path: tempDir });
+
+      const config = JSON.parse(
+        fs.readFileSync(path.join(windowsDir, 'bundle.config.json'), 'utf-8')
+      );
+      expect(config.extensions.startupTask).toEqual({
+        enabled: false,
+        taskId: 'MyTask',
+        enabledByDefault: false,
+      });
+    });
   });
 
   describe('extensionAddFileAssociation', () => {

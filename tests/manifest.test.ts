@@ -134,6 +134,23 @@ describe('generateManifest', () => {
     expect(manifest).toContain('<desktop:StartupTask');
     expect(manifest).toContain('TaskId="StartupTask"');
     expect(manifest).toContain(`DisplayName="${mockConfig.displayName}"`);
+    expect(manifest).toContain('Enabled="true"');
+    expect(manifest).toMatch(
+      /Category="windows\.startupTask" Executable="[^"]+\.exe" EntryPoint="Windows\.FullTrustApplication"/
+    );
+  });
+
+  it('includes startup task disabled by default when enabledByDefault is false', () => {
+    const config: MergedConfig = {
+      ...mockConfig,
+      extensions: {
+        startupTask: { enabled: true, enabledByDefault: false },
+      },
+    };
+    const manifest = generateManifest(config, 'x64', '10.0.17763.0', tempDir);
+
+    expect(manifest).toContain('windows.startupTask');
+    expect(manifest).toContain('Enabled="false"');
   });
 
   it('includes startup task with custom taskId', () => {
